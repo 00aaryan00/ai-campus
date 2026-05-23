@@ -21,6 +21,16 @@ type LeaveRequest = {
   status: "Pending" | "Approved" | "Rejected";
 };
 
+type QuestionPayload = {
+  questionText: string;
+  options: string[];
+  correctAnswer: string;
+  marks: number;
+  difficultyLevel: "easy" | "medium" | "hard";
+  topic: string;
+  source: "ai" | "manual";
+};
+
 type TeacherData = {
   name: string;
   classes: number;
@@ -107,11 +117,12 @@ export default function TeacherDashboard() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [generatedQuestionSets, setGeneratedQuestionSets] = useState<{
-    common?: Array<{ questionText: string; options: string[]; correctAnswer: string; marks: number }>;
-    easy?: Array<{ questionText: string; options: string[]; correctAnswer: string; marks: number }>;
-    medium?: Array<{ questionText: string; options: string[]; correctAnswer: string; marks: number }>;
-    hard?: Array<{ questionText: string; options: string[]; correctAnswer: string; marks: number }>;
+    common?: QuestionPayload[];
+    easy?: QuestionPayload[];
+    medium?: QuestionPayload[];
+    hard?: QuestionPayload[];
   } | null>(null);
+  const [editingQuestionKey, setEditingQuestionKey] = useState<string | null>(null);
 
   const day = getCurrentDayStatus();
   const [selectedDay, setSelectedDay] = useState(day.dayName);
@@ -155,6 +166,21 @@ export default function TeacherDashboard() {
     setLeaves((previous) =>
       previous.map((leave) => (leave.id === id ? { ...leave, status } : leave))
     );
+  };
+
+  const updateQuestion = (
+    setName: "common" | "easy" | "medium" | "hard",
+    index: number,
+    updater: (previous: QuestionPayload) => QuestionPayload
+  ) => {
+    setGeneratedQuestionSets((previous) => {
+      if (!previous) return previous;
+      const list = (previous[setName] || []).slice();
+      const current = list[index];
+      if (!current) return previous;
+      list[index] = updater(current);
+      return { ...previous, [setName]: list };
+    });
   };
 
   const handleCreateExam = async () => {
@@ -245,7 +271,41 @@ export default function TeacherDashboard() {
         transcript: transcriptInput,
         mode: examType === "common" ? "same" : "adaptive",
       });
-      setGeneratedQuestionSets(response.sets);
+      const normalizeGenerated = (
+        questions:
+          | Array<{
+              questionText: string;
+              options: string[];
+              correctAnswer: string;
+              marks: number;
+              difficultyLevel?: string;
+              topic?: string;
+              source?: "ai" | "manual";
+            }>
+          | undefined,
+        fallbackDifficulty: "easy" | "medium" | "hard"
+      ): QuestionPayload[] =>
+        (questions || []).map((question) => ({
+          questionText: question.questionText,
+          options: question.options,
+          correctAnswer: question.correctAnswer,
+          marks: question.marks,
+          difficultyLevel:
+            question.difficultyLevel === "easy" ||
+            question.difficultyLevel === "medium" ||
+            question.difficultyLevel === "hard"
+              ? question.difficultyLevel
+              : fallbackDifficulty,
+          topic: question.topic || "",
+          source: question.source || "ai",
+        }));
+
+      setGeneratedQuestionSets({
+        common: normalizeGenerated(response.sets.common, commonDifficulty || "medium"),
+        easy: normalizeGenerated(response.sets.easy, "easy"),
+        medium: normalizeGenerated(response.sets.medium, "medium"),
+        hard: normalizeGenerated(response.sets.hard, "hard"),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate questions";
       setAiError(message);
@@ -539,9 +599,7 @@ export default function TeacherDashboard() {
               />
 
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  Mode
-                </label>
+                
                 <select
                   value={examType}
                   onChange={(e) => setExamType(e.target.value as "" | "common" | "adaptive")}
@@ -635,13 +693,102 @@ export default function TeacherDashboard() {
                   <div className="mt-4">
                     <p className="mb-2 font-semibold">Common Set ({generatedQuestionSets.common.length})</p>
                     <div className="space-y-3">
-                      {generatedQuestionSets.common.map((q, i) => (
-                        <div key={i} className={inner}>
-                          <p className="font-semibold">Q{i + 1}. {q.questionText}</p>
-                          <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
-                          <p className="text-sm mt-1">Answer: {q.correctAnswer} | Marks: {q.marks}</p>
-                        </div>
-                      ))}
+                      {generatedQuestionSets.common.map((q, i) => {
+                        const questionKey = `common-${i}`;
+                        const isEditing = editingQuestionKey === questionKey;
+                        return (
+                          <div key={questionKey} className={inner}>
+                            <div className="mb-2 flex items-center justify-between">
+                              <p className="font-semibold">Q{i + 1}</p>
+                              <button
+                                type="button"
+                                onClick={() => setEditingQuestionKey(isEditing ? null : questionKey)}
+                                className="rounded-lg bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300"
+                              >
+                                {isEditing ? "Done" : "Edit"}
+                              </button>
+                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <input
+                                  value={q.questionText}
+                                  onChange={(e) =>
+                                    updateQuestion("common", i, (prev) => ({
+                                      ...prev,
+                                      questionText: e.target.value,
+                                      source: "manual",
+                                    }))
+                                  }
+                                  className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                />
+                                <input
+                                  value={q.options.join(" | ")}
+                                  onChange={(e) =>
+                                    updateQuestion("common", i, (prev) => ({
+                                      ...prev,
+                                      options: e.target.value
+                                        .split("|")
+                                        .map((item) => item.trim())
+                                        .filter(Boolean),
+                                      source: "manual",
+                                    }))
+                                  }
+                                  className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                />
+                                <div className="grid gap-2 md:grid-cols-3">
+                                  <input
+                                    value={q.correctAnswer}
+                                    onChange={(e) =>
+                                      updateQuestion("common", i, (prev) => ({
+                                        ...prev,
+                                        correctAnswer: e.target.value,
+                                        source: "manual",
+                                      }))
+                                    }
+                                    className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                  />
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={q.marks}
+                                    onChange={(e) =>
+                                      updateQuestion("common", i, (prev) => ({
+                                        ...prev,
+                                        marks: Number(e.target.value) || 1,
+                                        source: "manual",
+                                      }))
+                                    }
+                                    className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                  />
+                                  <select
+                                    value={q.difficultyLevel}
+                                    onChange={(e) =>
+                                      updateQuestion("common", i, (prev) => ({
+                                        ...prev,
+                                        difficultyLevel: e.target.value as "easy" | "medium" | "hard",
+                                        source: "manual",
+                                      }))
+                                    }
+                                    className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                  >
+                                    <option value="easy">easy</option>
+                                    <option value="medium">medium</option>
+                                    <option value="hard">hard</option>
+                                  </select>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="font-semibold">{q.questionText}</p>
+                                <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
+                                <p className="text-sm mt-1">
+                                  Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -653,13 +800,102 @@ export default function TeacherDashboard() {
                         {setName} Set ({generatedQuestionSets[setName]?.length || 0})
                       </p>
                       <div className="space-y-3">
-                        {generatedQuestionSets[setName]?.map((q, i) => (
-                          <div key={i} className={inner}>
-                            <p className="font-semibold">Q{i + 1}. {q.questionText}</p>
-                            <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
-                            <p className="text-sm mt-1">Answer: {q.correctAnswer} | Marks: {q.marks}</p>
-                          </div>
-                        ))}
+                        {generatedQuestionSets[setName]?.map((q, i) => {
+                          const questionKey = `${setName}-${i}`;
+                          const isEditing = editingQuestionKey === questionKey;
+                          return (
+                            <div key={questionKey} className={inner}>
+                              <div className="mb-2 flex items-center justify-between">
+                                <p className="font-semibold">Q{i + 1}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingQuestionKey(isEditing ? null : questionKey)}
+                                  className="rounded-lg bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300"
+                                >
+                                  {isEditing ? "Done" : "Edit"}
+                                </button>
+                              </div>
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <input
+                                    value={q.questionText}
+                                    onChange={(e) =>
+                                      updateQuestion(setName, i, (prev) => ({
+                                        ...prev,
+                                        questionText: e.target.value,
+                                        source: "manual",
+                                      }))
+                                    }
+                                    className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                  />
+                                  <input
+                                    value={q.options.join(" | ")}
+                                    onChange={(e) =>
+                                      updateQuestion(setName, i, (prev) => ({
+                                        ...prev,
+                                        options: e.target.value
+                                          .split("|")
+                                          .map((item) => item.trim())
+                                          .filter(Boolean),
+                                        source: "manual",
+                                      }))
+                                    }
+                                    className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                  />
+                                  <div className="grid gap-2 md:grid-cols-3">
+                                    <input
+                                      value={q.correctAnswer}
+                                      onChange={(e) =>
+                                        updateQuestion(setName, i, (prev) => ({
+                                          ...prev,
+                                          correctAnswer: e.target.value,
+                                          source: "manual",
+                                        }))
+                                      }
+                                      className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                    />
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={q.marks}
+                                      onChange={(e) =>
+                                        updateQuestion(setName, i, (prev) => ({
+                                          ...prev,
+                                          marks: Number(e.target.value) || 1,
+                                          source: "manual",
+                                        }))
+                                      }
+                                      className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                    />
+                                    <select
+                                      value={q.difficultyLevel}
+                                      onChange={(e) =>
+                                        updateQuestion(setName, i, (prev) => ({
+                                          ...prev,
+                                          difficultyLevel: e.target.value as "easy" | "medium" | "hard",
+                                          source: "manual",
+                                        }))
+                                      }
+                                      className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                                    >
+                                      <option value="easy">easy</option>
+                                      <option value="medium">medium</option>
+                                      <option value="hard">hard</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <p className="font-semibold">{q.questionText}</p>
+                                  <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
+                                  <p className="text-sm mt-1">
+                                    Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : null
