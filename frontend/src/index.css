@@ -1,0 +1,444 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================= BASE SETUP ================= */
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: #faf5ff;
+  color: #2a0246;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: "Outfit", "Inter", sans-serif;
+  font-style: normal;
+  letter-spacing: -0.01em;
+}
+
+.dark body {
+  background: #1a0a2e;
+  color: #ede9fe;
+}
+
+/* ================= GLOBAL TRANSITIONS ================= */
+
+button,
+a {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+input,
+select,
+textarea {
+  outline: none;
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}
+
+/* ================= CARD HOVER SYSTEM ================= */
+
+.card-hover {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.card-hover:hover {
+  transform: translateY(-6px) scale(1.03) !important;
+  box-shadow:
+    0 18px 42px rgba(147, 51, 234, 0.18),
+    0 0 24px rgba(168, 85, 247, 0.14) !important;
+}
+
+.dark .card-hover:hover {
+  box-shadow:
+    0 18px 42px rgba(168, 85, 247, 0.28),
+    0 0 30px rgba(192, 132, 252, 0.20) !important;
+}
+
+/* ================= PAGE ANIMATION ================= */
+
+.page-animate {
+  animation: pageFadeUp 0.55s ease both;
+}
+
+@keyframes pageFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= FLOATING BUBBLE ANIMATION ================= */
+
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: bubbleMove linear infinite;
+  opacity: 0;
+}
+
+@keyframes bubbleMove {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.3);
+    opacity: 0;
+  }
+  15% { opacity: 0.6; }
+  50% { opacity: 0.4; }
+  85% { opacity: 0.15; }
+  100% {
+    transform: translateY(-110vh) translateX(60px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* ================= STAR / DOT BACKGROUND ================= */
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(168, 85, 247, 0.55) 1.5px, transparent 2.5px),
+    radial-gradient(circle, rgba(147, 51, 234, 0.5) 1.5px, transparent 2.5px),
+    radial-gradient(circle, rgba(183, 148, 244, 0.45) 1.5px, transparent 2.5px);
+  background-size: 140px 140px, 200px 200px, 260px 260px;
+  background-position: 0 0, 50px 70px, 90px 130px;
+  opacity: 0.55;
+  animation: starsMove 40s linear infinite;
+}
+
+.dark body::before {
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.45) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(168, 85, 247, 0.5) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(192, 132, 252, 0.42) 1px, transparent 1.5px);
+  opacity: 0.45;
+}
+
+@keyframes starsMove {
+  from { background-position: 0 0, 50px 70px, 90px 130px; }
+  to { background-position: 260px 260px, 340px 380px, 440px 520px; }
+}
+
+/* ================= PARTICLE NODES (Auth pages) ================= */
+
+.particle-node {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(147, 51, 234, 0.45);
+  animation: floatNode 4s ease-in-out infinite alternate;
+}
+
+.dark .particle-node {
+  background: rgba(192, 132, 252, 0.4);
+}
+
+@keyframes floatNode {
+  0% { transform: translateY(0) translateX(0); opacity: 0.3; }
+  50% { opacity: 0.7; }
+  100% { transform: translateY(-20px) translateX(10px); opacity: 0.3; }
+}
+
+/* ================= GLASSMORPHISM ================= */
+
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(233, 213, 255, 0.6);
+}
+
+.dark .glass {
+  background: rgba(36, 16, 56, 0.75);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+}
+
+/* ================= GRADIENT TEXT (all purple now) ================= */
+
+.gradient-text-gold {
+  background: linear-gradient(135deg, #7e22ce 0%, #a855f7 50%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dark .gradient-text-gold {
+  background: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #d8b4fe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-blue {
+  background: linear-gradient(135deg, #6b21a8 0%, #9333ea 50%, #d946ef 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-dark-blue {
+  background: linear-gradient(135deg, #a855f7 0%, #c084fc 50%, #b794f4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-teal {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-orange {
+  background: linear-gradient(135deg, #9333ea 0%, #d946ef 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ================= CUSTOM SCROLLBAR ================= */
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #faf5ff; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #9333ea, #a855f7);
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-track { background: #1a0a2e; }
+.dark ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a855f7, #c084fc);
+  border-radius: 10px;
+}
+
+/* ================= PREVENT INPUT / LAYOUT HOVER JANK ================= */
+
+input:hover,
+select:hover,
+textarea:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+nav:hover,
+aside:hover,
+main:hover,
+section:hover,
+form:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ================= FEATURE CARD GLOW ================= */
+
+.feature-card { position: relative; overflow: hidden; }
+
+.feature-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7c3aed, #9333ea, #d946ef);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.feature-card:hover::before { opacity: 1; }
+
+.dark .feature-card::before {
+  background: linear-gradient(90deg, #a855f7, #c084fc, #d8b4fe);
+}
+
+/* ================= IMAGE FLOAT ANIMATION ================= */
+
+.float-image { animation: imageFloat 5s ease-in-out infinite; }
+
+@keyframes imageFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(1deg); }
+  75% { transform: translateY(5px) rotate(-1deg); }
+}
+
+.number-input::-webkit-inner-spin-button,
+.number-input::-webkit-outer-spin-button { opacity: 1; }
+
+.wrapper {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: #faf5ff;
+  padding: 20px;
+  position: relative; overflow: hidden;
+  color: #2a0246;
+}
+.glow {
+  position: absolute; top: 20%; left: 20%;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+.glow2 {
+  position: absolute; bottom: 20%; right: 20%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(217, 70, 239, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.card {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(233, 213, 255, 0.7);
+  border-radius: 24px;
+  padding: 40px;
+  width: 100%; max-width: 440px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 25px 50px -12px rgba(88, 28, 135, 0.25);
+  animation: slideUp 0.4s cubic-bezier(0.4,0,0.2,1);
+  position: relative; z-index: 1;
+}
+
+.dark .wrapper { background: #1a0a2e; color: white; }
+.dark .glow {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.20) 0%, transparent 70%);
+}
+.dark .glow2 {
+  background: radial-gradient(circle, rgba(217, 70, 239, 0.15) 0%, transparent 70%);
+}
+.dark .card {
+  background: rgba(36, 16, 56, 0.85);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 40px rgba(168, 85, 247, 0.20);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= DASHBOARD CARD MATCH ================= */
+.dark .shadow-lg.backdrop-blur-xl,
+.dark .shadow-card.backdrop-blur-xl {
+  background: rgba(36, 16, 56, 0.75) !important;
+  border-color: rgba(168, 85, 247, 0.16) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .shadow-lg.backdrop-blur-xl:hover {
+  border-color: rgba(168, 85, 247, 0.55) !important;
+  box-shadow: 0 0 40px rgba(168, 85, 247, 0.20), 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Re-route legacy gold utility classes to purple */
+.dark .text-gold-400 { color: #c084fc !important; }
+.dark .text-gold-500 { color: #a855f7 !important; }
+.dark .text-gold-600 { color: #9333ea !important; }
+.dark .bg-gold-500 { background-color: #a855f7 !important; }
+.dark .from-gold-400.to-amber-500 {
+  background-image: linear-gradient(135deg, #c084fc, #9333ea) !important;
+}
+
+/* Custom Date Input Styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1 !important;
+  display: block !important;
+  cursor: pointer !important;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%239333EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  width: 20px !important;
+  height: 20px !important;
+  filter: none !important;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>') !important;
+}
+
+/* ============== HARDCODED HEX OVERRIDES → Purple Theme ============== */
+/* These force-override arbitrary Tailwind classes like bg-[#0C1330] that
+   bypass the tailwind.config color palette overrides. */
+
+/* Dark surfaces (navy/gray → plum) */
+.bg-\[\#060D1F\],
+.bg-\[\#020617\],
+.dark\:bg-\[\#020817\]:is(.dark *),
+.dark\:bg-\[\#0B1121\]:is(.dark *),
+.dark\:bg-\[\#090b14\]:is(.dark *) { background-color: #1a0a2e !important; }
+
+.dark\:bg-\[\#0C1330\]:is(.dark *),
+.dark\:bg-\[\#111827\]:is(.dark *) { background-color: #241038 !important; }
+
+.dark\:bg-\[\#111B44\]:is(.dark *),
+.dark\:bg-\[\#1F2937\]:is(.dark *),
+.dark\:bg-\[\#1A2352\]:is(.dark *),
+.dark\:hover\:bg-\[\#1A2352\]:hover:is(.dark *),
+.dark\:hover\:bg-\[\#374151\]:hover:is(.dark *) { background-color: #2e1747 !important; }
+
+.dark\:border-\[\#0C1330\]:is(.dark *) { border-color: #241038 !important; }
+
+/* Indigo accent (#6366f1) → purple */
+.dark\:bg-\[\#6366f1\]\/15:is(.dark *) { background-color: rgba(168, 85, 247, 0.15) !important; }
+.dark\:bg-\[\#6366f1\]:is(.dark *) { background-color: #a855f7 !important; }
+.dark\:hover\:bg-\[\#6366f1\]\/10:hover:is(.dark *) { background-color: rgba(168, 85, 247, 0.10) !important; }
+.dark\:text-\[\#6366f1\]:is(.dark *) { color: #c084fc !important; }
+.dark\:border-\[\#6366f1\]\/20:is(.dark *) { border-color: rgba(168, 85, 247, 0.20) !important; }
+.dark\:text-\[\#94a3b8\]:is(.dark *) { color: #c4b5d6 !important; }
+.dark\:hover\:text-\[\#f1f5f9\]:hover:is(.dark *) { color: #f5edff !important; }
+
+/* Blue (#2563EB / #1E3A8A) → deep plum */
+.bg-\[\#2563EB\],
+.hover\:bg-\[\#2563EB\]:hover { background-color: #9333ea !important; }
+.text-\[\#2563EB\] { color: #9333ea !important; }
+.border-\[\#2563EB\],
+.focus\:border-\[\#2563EB\]:focus,
+.dark\:focus\:border-\[\#2563EB\]:focus:is(.dark *) { border-color: #9333ea !important; }
+.bg-\[\#2563EB\]\/10 { background-color: rgba(147, 51, 234, 0.10) !important; }
+.shadow-\[0_0_15px_rgba\(37\,99\,235\,0\.15\)\] { box-shadow: 0 0 15px rgba(147, 51, 234, 0.18) !important; }
+.hover\:shadow-\[0_0_20px_rgba\(37\,99\,235\,0\.3\)\]:hover { box-shadow: 0 0 20px rgba(147, 51, 234, 0.35) !important; }
+
+/* Role gradients (Login/Signup) → all purple variants */
+.from-\[\#2563EB\] { --tw-gradient-from: #7e22ce !important; --tw-gradient-to: rgb(126 34 206 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.to-\[\#1E3A8A\] { --tw-gradient-to: #4c1d95 !important; }
+.from-\[\#10B981\] { --tw-gradient-from: #9333ea !important; --tw-gradient-to: rgb(147 51 234 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.to-\[\#047857\] { --tw-gradient-to: #581c87 !important; }
+.from-\[\#0D9488\] { --tw-gradient-from: #a855f7 !important; --tw-gradient-to: rgb(168 85 247 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.to-\[\#0F766E\] { --tw-gradient-to: #6b21a8 !important; }
+.from-\[\#8B5CF6\] { --tw-gradient-from: #c084fc !important; --tw-gradient-to: rgb(192 132 252 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+.to-\[\#5B21B6\] { --tw-gradient-to: #6b21a8 !important; }
+
+/* Force global sans font (extra safety beyond body rule) */
+* { font-family: inherit; }

@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   createTest,
+  generateQuestionsFromAI,
   getTests,
   joinTestByCode,
   saveDraftTest,
@@ -19,6 +20,7 @@ router.use(protect);
 //router.post("/save-draft", createTestWriteLimiter, authorizeRoles("faculty"), saveDraftTest);
 //router.put("/:id", createTestWriteLimiter, authorizeRoles("faculty"), updateTestDraft);
 router.post("/create", createTestWriteLimiter, authorizeRoles("faculty"), createTest);
+router.post("/ai/generate", createTestWriteLimiter, authorizeRoles("faculty"), generateQuestionsFromAI);
 router.post("/join-by-code", authorizeRoles("student"), joinTestByCode);
 router.post("/:id/start", authorizeRoles("student"), startTest);
 

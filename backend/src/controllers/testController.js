@@ -586,8 +586,99 @@ const publishTest = async (req, res, next) => {
   }
 };
 
+const buildNormalizedAiQuestion = (question, fallbackDifficulty = "medium") => {
+  const optionValues = [
+    question?.options?.A,
+    question?.options?.B,
+    question?.options?.C,
+    question?.options?.D,
+  ].filter((item) => typeof item === "string" && item.trim());
+
+  const correctAnswer = question?.options?.[question?.correct_answer] || "";
+  const allowedDifficulty = ["easy", "medium", "hard"];
+  const difficulty = String(question?.difficulty || fallbackDifficulty).toLowerCase();
+
+  return {
+    questionText: question?.question || "",
+    options: optionValues,
+    correctAnswer,
+    marks: Number.isFinite(Number(question?.marks)) ? Number(question.marks) : 1,
+    difficultyLevel: allowedDifficulty.includes(difficulty) ? difficulty : fallbackDifficulty,
+    topic: "",
+    source: "ai",
+  };
+};
+
+const generateQuestionsFromAI = async (req, res, next) => {
+  try {
+    const { transcript, mode = "same" } = req.body;
+
+    if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "transcript is required",
+      });
+    }
+
+    if (!["same", "adaptive"].includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: "mode must be either same or adaptive",
+      });
+    }
+
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
+    const endpoint = mode === "same" ? "/generate-same-test" : "/generate-rankwise-test";
+    const aiResponse = await fetch(`${aiServiceUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transcript,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorPayload = await aiResponse.json().catch(() => ({}));
+      return res.status(502).json({
+        success: false,
+        message: errorPayload?.detail || "AI service request failed",
+      });
+    }
+
+    const aiPayload = await aiResponse.json();
+    if (mode === "same") {
+      return res.status(200).json({
+        success: true,
+        mode: "common",
+        sets: {
+          common: (aiPayload.questions || []).map((question) =>
+            buildNormalizedAiQuestion(question, "medium")
+          ),
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      mode: "adaptive",
+      sets: {
+        easy: (aiPayload.easy || []).map((question) => buildNormalizedAiQuestion(question, "easy")),
+        medium: (aiPayload.medium || []).map((question) =>
+          buildNormalizedAiQuestion(question, "medium")
+        ),
+        hard: (aiPayload.hard || []).map((question) => buildNormalizedAiQuestion(question, "hard")),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTest,
+  generateQuestionsFromAI,
   saveDraftTest,
   updateTestDraft,
   joinTestByCode,

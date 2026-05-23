@@ -9,6 +9,7 @@ const evaluateTest = require("../utils/evaluateTest");
 const { isTransactionUnsupportedError } = require("../utils/testFlow");
 
 const isDuplicateKeyError = (error) => error?.code === 11000;
+const submitGraceSeconds = Math.max(Number(process.env.SUBMIT_GRACE_SECONDS || 15), 0);
 
 const findAttemptResult = (attemptId, session) =>
   Result.findOne({ attemptId }).session(session || null);
@@ -38,12 +39,12 @@ const markAttemptExpired = (attemptId, now, session) =>
   );
 
 const lockAttemptForSubmission = (attemptId, submittedAt, session) =>
-  // The attempt state is the submission lock: only a still-active attempt may transition to submitted.
+  // Submission lock: allow both in_progress and expired states to transition to submitted.
+  // Expiry enforcement is handled by UI timer/flow; backend accepts final submit for existing attempt.
   TestAttempt.findOneAndUpdate(
     {
       _id: attemptId,
-      status: "in_progress",
-      expiresAt: { $gt: submittedAt },
+      status: { $in: ["in_progress", "expired"] },
     },
     {
       $set: {
@@ -71,6 +72,12 @@ const rollbackSubmittedAttempt = async (attemptId, submittedAt) => {
       },
     }
   );
+};
+
+const isWithinSubmissionWindow = (expiresAt, submittedAt) => {
+  const expiryMs = new Date(expiresAt).getTime();
+  const submittedMs = new Date(submittedAt).getTime();
+  return submittedMs <= expiryMs + submitGraceSeconds * 1000;
 };
 
 const submitAttemptResult = async ({
@@ -148,35 +155,8 @@ const submitAttemptResult = async ({
       };
     }
 
-    if (currentAttempt.status === "expired") {
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
-
-      return {
-        error: {
-          status: 410,
-          message: "This attempt has expired. Please contact your faculty if a retry is needed.",
-        },
-      };
-    }
-
     const now = new Date();
-    const expiredAttempt = await markAttemptExpired(currentAttempt._id, now, session);
-    if (expiredAttempt) {
-      if (session) {
-        await session.commitTransaction();
-        session.endSession();
-      }
-
-      return {
-        error: {
-          status: 410,
-          message: "This attempt has expired. Please contact your faculty if a retry is needed.",
-        },
-      };
-    }
+    await markAttemptExpired(currentAttempt._id, now, session);
 
     // Submission is always evaluated against the set that was locked into the attempt at start time.
     const questions = await Question.find({
@@ -202,6 +182,19 @@ const submitAttemptResult = async ({
 
     const evaluation = evaluateTest(questions, answers);
     const submittedAt = new Date();
+    if (!isWithinSubmissionWindow(currentAttempt.expiresAt, submittedAt)) {
+      if (session) {
+        await session.commitTransaction();
+        session.endSession();
+      }
+
+      return {
+        error: {
+          status: 410,
+          message: "Submission window has closed for this attempt",
+        },
+      };
+    }
 
     const lockedAttempt = await lockAttemptForSubmission(currentAttempt._id, submittedAt, session);
     if (!lockedAttempt) {
@@ -222,20 +215,16 @@ const submitAttemptResult = async ({
         };
       }
 
-      if (latestAttempt?.status === "expired" || latestAttempt?.expiresAt <= submittedAt) {
-        if (latestAttempt?.status === "in_progress") {
-          await markAttemptExpired(currentAttempt._id, submittedAt, session);
-        }
-
+      if (latestAttempt && !isWithinSubmissionWindow(latestAttempt.expiresAt, submittedAt)) {
         if (session) {
           await session.commitTransaction();
           session.endSession();
         }
-
+     
         return {
           error: {
             status: 410,
-            message: "This attempt has expired. Please contact your faculty if a retry is needed.",
+            message: "Submission window has closed for this attempt",
           },
         };
       }
