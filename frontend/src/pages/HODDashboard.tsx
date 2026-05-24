@@ -5,8 +5,6 @@ import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
 import {
   listenLeaveRequests,
   updateLeaveStatus,
@@ -90,19 +88,23 @@ export default function HODDashboard() {
   const schedule = hodTimetable[selectedDay] || [];
 
   useEffect(() => {
-    const fetchData = async () => {
-      const snap = await getDoc(
-        doc(db, "dashboards", `hod_${selectedBranch}`)
-      );
-
-      if (snap.exists()) {
-        setData(snap.data() as HODData);
-      } else {
-        console.log("No dashboard found for:", `hod_${selectedBranch}`);
-      }
-    };
-
-    fetchData();
+    setData({
+      name: "Dr. Sharma",
+      departments: 1,
+      faculty: 24,
+      reports: 18,
+      averageScore: 79,
+      attendanceRate: 84,
+      studentsAtRisk: 9,
+      bestDepartment: selectedBranch.toUpperCase(),
+      chartData: [
+        { name: "Mon", value: 72 },
+        { name: "Tue", value: 75 },
+        { name: "Wed", value: 80 },
+        { name: "Thu", value: 77 },
+        { name: "Fri", value: 83 },
+      ],
+    });
 
     const unsubscribe = listenLeaveRequests((items) => {
       setLeaves(

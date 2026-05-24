@@ -5,8 +5,6 @@ import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
 import { listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 
@@ -57,15 +55,23 @@ export default function PrincipalDashboard() {
   const [leaveOverview, setLeaveOverview] = useState<LeaveRequest[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const snap = await getDoc(doc(db, "dashboards", "principal"));
-
-      if (snap.exists()) {
-        setData(snap.data() as PrincipalData);
-      }
-    };
-
-    fetchData();
+    setData({
+      name: "Principal Demo",
+      totalStudents: 1200,
+      faculty: 82,
+      departments: 6,
+      institutionPerformance: 81,
+      healthIndex: 86,
+      criticalAlerts: 3,
+      topDepartment: "CSE",
+      chartData: [
+        { name: "Mon", value: 74 },
+        { name: "Tue", value: 77 },
+        { name: "Wed", value: 79 },
+        { name: "Thu", value: 82 },
+        { name: "Fri", value: 84 },
+      ],
+    });
 
     const unsubscribe = listenLeaveRequests((leaves) => {
       setLeaveOverview(leaves);
