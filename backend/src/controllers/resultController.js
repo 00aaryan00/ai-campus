@@ -10,6 +10,7 @@ const { isTransactionUnsupportedError } = require("../utils/testFlow");
 
 const isDuplicateKeyError = (error) => error?.code === 11000;
 const submitGraceSeconds = Math.max(Number(process.env.SUBMIT_GRACE_SECONDS || 15), 0);
+const normalizeDepartment = (value) => String(value || "").trim().toLowerCase();
 
 const findAttemptResult = (attemptId, session) =>
   Result.findOne({ attemptId }).session(session || null);
@@ -83,6 +84,7 @@ const isWithinSubmissionWindow = (expiresAt, submittedAt) => {
 const submitAttemptResult = async ({
   attemptId,
   studentId,
+  institutionId,
   test,
   assignedSet,
   answers,
@@ -160,6 +162,7 @@ const submitAttemptResult = async ({
 
     // Submission is always evaluated against the set that was locked into the attempt at start time.
     const questions = await Question.find({
+      institutionId: institutionId || null,
       testId: test._id,
       setType: assignedSet,
     })
@@ -244,6 +247,7 @@ const submitAttemptResult = async ({
 
     const resultPayload = {
       studentId,
+      institutionId,
       testId: test._id,
       attemptId: currentAttempt._id,
       subject: test.subject,
@@ -304,6 +308,13 @@ const submitAttemptResult = async ({
 
 const submitTest = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { testId, answers } = req.body;
 
     console.log("[submit] request received", {
@@ -335,12 +346,24 @@ const submitTest = async (req, res, next) => {
       }
     }
 
-    const test = await Test.findById(testId);
+    const test = await Test.findOne({
+      _id: testId,
+      institutionId: req.tenant._id,
+    }).populate("createdBy", "department");
 
     if (!test) {
       return res.status(404).json({
         success: false,
         message: "Test not found",
+      });
+    }
+
+    const testDepartment = normalizeDepartment(test.department || test.createdBy?.department);
+    const studentDepartment = normalizeDepartment(req.user.department);
+    if (testDepartment && studentDepartment && testDepartment !== studentDepartment) {
+      return res.status(403).json({
+        success: false,
+        message: "This test belongs to a different department",
       });
     }
 
@@ -366,6 +389,7 @@ const submitTest = async (req, res, next) => {
     const submission = await submitAttemptResult({
       attemptId: attempt._id,
       studentId: req.user._id,
+      institutionId: req.tenant._id,
       test,
       assignedSet: attempt.assignedSet,
       answers,
@@ -405,7 +429,10 @@ const submitTest = async (req, res, next) => {
 
 const getMyResults = async (req, res, next) => {
   try {
-    const results = await Result.find({ studentId: req.user._id })
+    const results = await Result.find({
+      studentId: req.user._id,
+      institutionId: req.tenant?._id || req.user.institutionId,
+    })
       .populate("testId", "title subject mode duration roomCode")
       .sort({ submittedAt: -1 });
 

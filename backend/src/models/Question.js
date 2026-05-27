@@ -8,6 +8,12 @@ const questionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    institutionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Institution",
+      default: null,
+      index: true,
+    },
     setType: {
       type: String,
       enum: ["common", "easy", "medium", "hard"],

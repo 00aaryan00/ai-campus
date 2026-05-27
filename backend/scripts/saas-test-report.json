@@ -1,5 +1,5 @@
 {
-  "runId": "1779038562605-6oyjky",
+  "runId": "1779816490948-3pud9s",
   "baseUrl": "http://localhost:5000",
   "summary": {
     "passed": 38,
@@ -12,179 +12,179 @@
       "name": "Health check returns 200",
       "ok": true,
       "status": 200,
-      "at": "2026-05-17T17:22:42.817Z"
+      "at": "2026-05-26T17:28:11.032Z"
     },
     {
       "category": "Infrastructure",
       "name": "Unknown route returns 404",
       "ok": true,
-      "at": "2026-05-17T17:22:42.833Z"
+      "at": "2026-05-26T17:28:11.047Z"
     },
     {
       "category": "Auth / Multi-tenant",
       "name": "Register faculty tenant user",
       "ok": true,
-      "userId": "6a09f962a343574ff1a43fcf",
-      "at": "2026-05-17T17:22:43.050Z"
+      "userId": "6a15d82be90542bef3669de6",
+      "at": "2026-05-26T17:28:11.330Z"
     },
     {
       "category": "Auth / Multi-tenant",
       "name": "Register student tenant user",
       "ok": true,
-      "userId": "6a09f963a343574ff1a43fd2",
-      "at": "2026-05-17T17:22:43.242Z"
+      "userId": "6a15d82be90542bef3669ded",
+      "at": "2026-05-26T17:28:11.489Z"
     },
     {
       "category": "Auth / Multi-tenant",
       "name": "Register second student (isolation)",
       "ok": true,
-      "userId": "6a09f963a343574ff1a43fd5",
-      "at": "2026-05-17T17:22:43.366Z"
+      "userId": "6a15d82be90542bef3669df4",
+      "at": "2026-05-26T17:28:11.642Z"
     },
     {
       "category": "Auth / Multi-tenant",
       "name": "Register HOD role user",
       "ok": true,
       "role": "hod",
-      "at": "2026-05-17T17:22:43.558Z"
+      "at": "2026-05-26T17:28:11.797Z"
     },
     {
       "category": "Auth / Security",
       "name": "Reject duplicate email registration",
       "ok": true,
-      "at": "2026-05-17T17:22:43.568Z"
+      "at": "2026-05-26T17:28:11.805Z"
     },
     {
       "category": "Auth / Validation",
-      "name": "Reject registration with short password",
+      "name": "Reject signup-request missing role (email_domain)",
       "ok": true,
-      "at": "2026-05-17T17:22:43.571Z"
+      "at": "2026-05-26T17:28:11.810Z"
     },
     {
       "category": "Auth / Validation",
       "name": "Reject invalid role",
       "ok": true,
-      "at": "2026-05-17T17:22:43.579Z"
+      "at": "2026-05-26T17:28:11.814Z"
     },
     {
       "category": "Auth / Roles",
       "name": "Normalize teacher alias to faculty on register",
       "ok": true,
-      "at": "2026-05-17T17:22:43.729Z"
+      "at": "2026-05-26T17:28:11.973Z"
     },
     {
       "category": "Auth",
       "name": "Login with valid credentials",
       "ok": true,
-      "at": "2026-05-17T17:22:43.853Z"
+      "at": "2026-05-26T17:28:12.053Z"
     },
     {
       "category": "Auth / Security",
       "name": "Login rejects wrong password",
       "ok": true,
-      "at": "2026-05-17T17:22:43.964Z"
+      "at": "2026-05-26T17:28:12.120Z"
     },
     {
       "category": "Auth / Security",
       "name": "GET /me requires Bearer token",
       "ok": true,
-      "at": "2026-05-17T17:22:43.966Z"
+      "at": "2026-05-26T17:28:12.125Z"
     },
     {
       "category": "Auth",
       "name": "GET /me returns current user profile",
       "ok": true,
-      "email": "faculty.1779038562605-6oyjky@saas-test.local",
-      "at": "2026-05-17T17:22:44.034Z"
+      "email": "faculty.1779816490948-3pud9s@saas-test.local",
+      "at": "2026-05-26T17:28:12.133Z"
     },
     {
       "category": "Auth / Security",
       "name": "Invalid JWT rejected",
       "ok": true,
-      "at": "2026-05-17T17:22:44.036Z"
+      "at": "2026-05-26T17:28:12.138Z"
     },
     {
       "category": "RBAC",
       "name": "Student cannot create tests (403)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.049Z"
+      "at": "2026-05-26T17:28:12.147Z"
     },
     {
       "category": "RBAC",
       "name": "Faculty cannot access student results (403)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.056Z"
+      "at": "2026-05-26T17:28:12.153Z"
     },
     {
       "category": "RBAC",
       "name": "HOD cannot create tests without faculty role (403)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.062Z"
+      "at": "2026-05-26T17:28:12.160Z"
     },
     {
       "category": "Faculty / Test lifecycle",
       "name": "Faculty creates published common-mode test",
       "ok": true,
-      "roomCode": "26TRUZ",
+      "roomCode": "RY8R4E",
       "questionCount": 2,
-      "at": "2026-05-17T17:22:44.116Z"
+      "at": "2026-05-26T17:28:12.269Z"
     },
     {
       "category": "Faculty / Validation",
       "name": "Reject create without required fields",
       "ok": true,
-      "at": "2026-05-17T17:22:44.122Z"
+      "at": "2026-05-26T17:28:12.278Z"
     },
     {
       "category": "Faculty / Validation",
       "name": "Reject publish with empty question set",
       "ok": true,
-      "at": "2026-05-17T17:22:44.129Z"
+      "at": "2026-05-26T17:28:12.287Z"
     },
     {
       "category": "Student / Test flow",
       "name": "Student joins test lobby by room code",
       "ok": true,
       "questionCount": 2,
-      "at": "2026-05-17T17:22:44.175Z"
+      "at": "2026-05-26T17:28:12.341Z"
     },
     {
       "category": "Student / Security",
       "name": "Lobby does not leak question answers before start",
       "ok": true,
-      "at": "2026-05-17T17:22:44.175Z"
+      "at": "2026-05-26T17:28:12.341Z"
     },
     {
       "category": "RBAC",
       "name": "Faculty cannot join as student (403)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.181Z"
+      "at": "2026-05-26T17:28:12.348Z"
     },
     {
       "category": "Student / Test flow",
       "name": "Student starts test and receives questions",
       "ok": true,
       "questionCount": 2,
-      "attemptId": "6a09f964a343574ff1a43ffa",
-      "at": "2026-05-17T17:22:44.205Z"
+      "attemptId": "6a15d82ce90542bef3669e36",
+      "at": "2026-05-26T17:28:12.388Z"
     },
     {
       "category": "Student / Reliability",
       "name": "Resume start returns existing attempt (idempotent)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.223Z"
+      "at": "2026-05-26T17:28:12.405Z"
     },
     {
       "category": "Student / Validation",
       "name": "Start without room code fails",
       "ok": true,
-      "at": "2026-05-17T17:22:44.234Z"
+      "at": "2026-05-26T17:28:12.417Z"
     },
     {
       "category": "Multi-tenant / Isolation",
       "name": "Second student can join and start same test",
       "ok": true,
-      "at": "2026-05-17T17:22:44.340Z"
+      "at": "2026-05-26T17:28:12.459Z"
     },
     {
       "category": "Student / Validation",
@@ -192,7 +192,7 @@
       "ok": true,
       "skipped": true,
       "note": "student2 already started — skip",
-      "at": "2026-05-17T17:22:44.393Z"
+      "at": "2026-05-26T17:28:12.525Z"
     },
     {
       "category": "Student / Results",
@@ -200,65 +200,65 @@
       "ok": true,
       "score": 4,
       "accuracy": 100,
-      "at": "2026-05-17T17:22:44.429Z"
+      "at": "2026-05-26T17:28:12.559Z"
     },
     {
       "category": "Student / Idempotency",
       "name": "Duplicate submit rejected (409)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.450Z"
+      "at": "2026-05-26T17:28:12.589Z"
     },
     {
       "category": "Student / Business rules",
       "name": "Cannot re-join lobby after submit (409)",
       "ok": true,
-      "at": "2026-05-17T17:22:44.466Z"
+      "at": "2026-05-26T17:28:12.604Z"
     },
     {
       "category": "Student / Results",
       "name": "GET my-results lists submission",
       "ok": true,
       "count": 1,
-      "at": "2026-05-17T17:22:44.479Z"
+      "at": "2026-05-26T17:28:12.618Z"
     },
     {
       "category": "Adaptive / Faculty",
       "name": "Faculty creates adaptive-mode test",
       "ok": true,
-      "roomCode": "SAHCKV",
-      "at": "2026-05-17T17:22:44.503Z"
+      "roomCode": "3C5KB3",
+      "at": "2026-05-26T17:28:12.638Z"
     },
     {
       "category": "Adaptive / Student",
       "name": "New student gets adaptive band (medium baseline)",
       "ok": true,
       "assignedSet": "medium",
-      "at": "2026-05-17T17:22:44.662Z"
+      "at": "2026-05-26T17:28:12.813Z"
     },
     {
       "category": "Edge cases",
       "name": "Invalid room code returns 404",
       "ok": true,
-      "at": "2026-05-17T17:22:44.670Z"
+      "at": "2026-05-26T17:28:12.822Z"
     },
     {
       "category": "Edge cases",
       "name": "Submit with invalid test id returns 400",
       "ok": true,
-      "at": "2026-05-17T17:22:44.676Z"
+      "at": "2026-05-26T17:28:12.829Z"
     },
     {
       "category": "Edge cases",
       "name": "Submit malformed answers returns 400",
       "ok": true,
-      "at": "2026-05-17T17:22:44.683Z"
+      "at": "2026-05-26T17:28:12.837Z"
     },
     {
       "category": "API coverage",
       "name": "Draft routes are not exposed (expected gap)",
       "ok": true,
       "note": "save-draft and update draft are implemented but commented in testRoutes.js",
-      "at": "2026-05-17T17:22:44.690Z"
+      "at": "2026-05-26T17:28:12.844Z"
     }
   ],
   "byCategory": {

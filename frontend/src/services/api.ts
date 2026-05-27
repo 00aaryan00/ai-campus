@@ -1,9 +1,19 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+const ACTIVE_TENANT_KEY = "activeTenantSlug";
+
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   token?: string | null;
+};
+
+const getActiveTenantSlug = () => localStorage.getItem(ACTIVE_TENANT_KEY);
+
+export const tenantSession = {
+  setActiveTenantSlug: (tenantSlug: string) => localStorage.setItem(ACTIVE_TENANT_KEY, tenantSlug),
+  getActiveTenantSlug,
+  clearActiveTenantSlug: () => localStorage.removeItem(ACTIVE_TENANT_KEY),
 };
 
 const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
@@ -17,7 +27,6 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   const payload = await response.json().catch(() => null);
-
   if (!response.ok) {
     throw new Error(payload?.message || "Request failed");
   }
@@ -25,7 +34,15 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
   return payload as T;
 };
 
-export type BackendRole = "student" | "faculty" | "hod";
+const tenantPath = (tenantSlug: string | null | undefined, resource: string) => {
+  const slug = tenantSlug || getActiveTenantSlug();
+  if (!slug) {
+    throw new Error("Tenant slug is required");
+  }
+  return `/t/${slug}${resource}`;
+};
+
+export type BackendRole = "student" | "faculty" | "hod" | "institution_admin";
 
 export type AuthUser = {
   id: string;
@@ -33,6 +50,7 @@ export type AuthUser = {
   email: string;
   role: BackendRole;
   department?: string;
+  enrollmentNumber?: string | null;
 };
 
 type AuthResponse = {
@@ -42,23 +60,50 @@ type AuthResponse = {
   user: AuthUser;
 };
 
-export const authApi = {
-  register: (payload: {
+type SignupRequestResponse = {
+  success: boolean;
+  message: string;
+  devGeneratedPassword?: string;
+};
+
+type TenantHealthResponse = {
+  success: boolean;
+  message: string;
+  tenant: {
+    id: string;
     name: string;
-    email: string;
-    password: string;
-    role: BackendRole;
-    department?: string;
-  }) => request<AuthResponse>("/auth/register", { method: "POST", body: payload }),
+    slug: string;
+    status: string;
+    authMode: "email_domain" | "roster_based";
+    domains: string[];
+  };
+};
 
-  login: (payload: { email: string; password: string }) =>
-    request<AuthResponse>("/auth/login", { method: "POST", body: payload }),
+export const authApi = {
+  tenantHealth: (tenantSlug: string) =>
+    request<TenantHealthResponse>(tenantPath(tenantSlug, "/health"), {
+      method: "GET",
+    }),
 
-  me: (token: string) =>
-    request<{ success: boolean; user: AuthUser }>("/auth/me", {
+  signupRequest: (
+    tenantSlug: string,
+    payload: {
+      role: "student" | "faculty" | "hod";
+      name: string;
+      email: string;
+      department?: string;
+      enrollmentNumber?: string;
+    }
+  ) => request<SignupRequestResponse>(tenantPath(tenantSlug, "/auth/signup-request"), { method: "POST", body: payload }),
+
+  login: (tenantSlug: string, payload: { email: string; password: string }) =>
+    request<AuthResponse>(tenantPath(tenantSlug, "/auth/login"), { method: "POST", body: payload }),
+
+  me: (token: string, tenantSlug?: string) =>
+    request<{ success: boolean; user: AuthUser }>(tenantPath(tenantSlug || null, "/auth/me"), {
       method: "GET",
       token,
-  }),
+    }),
 };
 
 type LobbyResponse = {
@@ -135,15 +180,15 @@ type MyResultsResponse = {
 };
 
 export const testApi = {
-  joinByCode: (token: string, roomCode: string) =>
-    request<LobbyResponse>("/tests/join-by-code", {
+  joinByCode: (token: string, roomCode: string, tenantSlug?: string) =>
+    request<LobbyResponse>(tenantPath(tenantSlug || null, "/tests/join-by-code"), {
       method: "POST",
       token,
       body: { roomCode },
     }),
 
-  startTest: (token: string, testId: string, roomCode: string) =>
-    request<StartTestResponse>(`/tests/${testId}/start`, {
+  startTest: (token: string, testId: string, roomCode: string, tenantSlug?: string) =>
+    request<StartTestResponse>(tenantPath(tenantSlug || null, `/tests/${testId}/start`), {
       method: "POST",
       token,
       body: { roomCode },
@@ -153,16 +198,17 @@ export const testApi = {
 export const resultApi = {
   submitTest: (
     token: string,
-    payload: { testId: string; answers: Array<{ questionId: string; selectedAnswer: string }> }
+    payload: { testId: string; answers: Array<{ questionId: string; selectedAnswer: string }> },
+    tenantSlug?: string
   ) =>
-    request<SubmitTestResponse>("/results/submit", {
+    request<SubmitTestResponse>(tenantPath(tenantSlug || null, "/results/submit"), {
       method: "POST",
       token,
       body: payload,
     }),
 
-  myResults: (token: string) =>
-    request<MyResultsResponse>("/results/my-results", {
+  myResults: (token: string, tenantSlug?: string) =>
+    request<MyResultsResponse>(tenantPath(tenantSlug || null, "/results/my-results"), {
       method: "GET",
       token,
     }),
@@ -217,9 +263,10 @@ export const facultyAiApi = {
     payload: {
       transcript: string;
       mode: "same" | "adaptive";
-    }
+    },
+    tenantSlug?: string
   ) =>
-    request<AiGenerateResponse>("/tests/ai/generate", {
+    request<AiGenerateResponse>(tenantPath(tenantSlug || null, "/tests/ai/generate"), {
       method: "POST",
       token,
       body: payload,
@@ -287,10 +334,237 @@ type CreateTestResponse = {
 };
 
 export const facultyTestApi = {
-  createTest: (token: string, payload: CreateTestPayload) =>
-    request<CreateTestResponse>("/tests/create", {
+  createTest: (token: string, payload: CreateTestPayload, tenantSlug?: string) =>
+    request<CreateTestResponse>(tenantPath(tenantSlug || null, "/tests/create"), {
       method: "POST",
       token,
       body: payload,
+    }),
+};
+
+type PlatformLoginResponse = {
+  success: boolean;
+  message: string;
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: "super_admin";
+  };
+};
+
+export const platformApi = {
+  login: (payload: { email: string; password: string }) =>
+    request<PlatformLoginResponse>("/platform/auth/login", {
+      method: "POST",
+      body: payload,
+    }),
+
+  createInstitution: (
+    token: string,
+    payload: {
+      name: string;
+      slug: string;
+      domains: string[];
+      authMode: "email_domain" | "roster_based";
+      adminName: string;
+      adminEmail: string;
+      adminPassword: string;
+    }
+  ) =>
+    request<{
+      success: boolean;
+      message: string;
+      institution: { id: string; name: string; slug: string };
+      institutionAdmin: { email: string };
+    }>("/platform/institutions", {
+      method: "POST",
+      token,
+      body: payload,
+    }),
+};
+
+export const tenantAdminApi = {
+  setAuthMode: (
+    token: string,
+    tenantSlug: string,
+    payload: { authMode: "email_domain" | "roster_based"; domains?: string[] }
+  ) =>
+    request<{ success: boolean; message: string }>(tenantPath(tenantSlug, "/admin/auth-mode"), {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  uploadRosterCsv: (token: string, tenantSlug: string, csvContent: string) =>
+    request<{
+      success: boolean;
+      summary: { totalRows: number; inserted: number; updated: number; rejected: number };
+      rejected: Array<{ rowNumber: number; reason: string }>;
+    }>(tenantPath(tenantSlug, "/admin/roster/upload"), {
+      method: "POST",
+      token,
+      body: { csvContent },
+    }),
+
+  uploadRosterRows: (
+    token: string,
+    tenantSlug: string,
+    rows: Array<{
+      email: string;
+      name: string;
+      role: "student" | "faculty" | "hod";
+      department?: string;
+      enrollmentNumber?: string;
+      isActive?: boolean;
+    }>,
+    uploadGroup: "mixed" | "students" | "staff" = "mixed"
+  ) =>
+    request<{
+      success: boolean;
+      summary: { totalRows: number; inserted: number; updated: number; rejected: number };
+      rejected: Array<{ rowNumber: number; reason: string }>;
+    }>(tenantPath(tenantSlug, "/admin/roster/upload"), {
+      method: "POST",
+      token,
+      body: { rows, uploadGroup },
+    }),
+
+  listRoster: (
+    token: string,
+    tenantSlug: string,
+    filters?: { role?: "student" | "faculty" | "hod"; department?: string; isActive?: boolean }
+  ) =>
+    request<{
+      success: boolean;
+      count: number;
+      entries: Array<{
+        _id: string;
+        institutionId: string;
+        email: string;
+        enrollmentNumber?: string;
+        name: string;
+        department: string;
+        role: "student" | "faculty" | "hod";
+        isActive: boolean;
+        createdAt: string;
+      }>;
+    }>(
+      `${tenantPath(tenantSlug, "/admin/roster")}${
+        filters
+          ? `?${new URLSearchParams(
+              Object.entries(filters)
+                .filter(([, v]) => v !== undefined && v !== "")
+                .map(([k, v]) => [k, String(v)])
+            ).toString()}`
+          : ""
+      }`,
+      {
+        method: "GET",
+        token,
+      }
+    ),
+
+  updateRosterEntry: (
+    token: string,
+    tenantSlug: string,
+    entryId: string,
+    payload: {
+      name?: string;
+      role?: "student" | "faculty" | "hod";
+      department?: string;
+      enrollmentNumber?: string;
+      isActive?: boolean;
+    }
+  ) =>
+    request<{
+      success: boolean;
+      message: string;
+    }>(tenantPath(tenantSlug, `/admin/roster/${entryId}`), {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  listUsers: (
+    token: string,
+    tenantSlug: string,
+    filters?: { role?: "student" | "faculty" | "hod"; status?: "invited" | "active" | "disabled"; department?: string }
+  ) =>
+    request<{
+      success: boolean;
+      count: number;
+      users: Array<{
+        _id: string;
+        name: string;
+        email: string;
+        role: "student" | "faculty" | "hod";
+        department?: string;
+        enrollmentNumber?: string | null;
+        status: "invited" | "active" | "disabled";
+      }>;
+    }>(
+      `${tenantPath(tenantSlug, "/admin/users")}${
+        filters
+          ? `?${new URLSearchParams(
+              Object.entries(filters)
+                .filter(([, v]) => Boolean(v))
+                .map(([k, v]) => [k, String(v)])
+            ).toString()}`
+          : ""
+      }`,
+      {
+        method: "GET",
+        token,
+      }
+    ),
+
+  updateUser: (
+    token: string,
+    tenantSlug: string,
+    userId: string,
+    payload: {
+      name?: string;
+      role?: "student" | "faculty" | "hod";
+      department?: string;
+      enrollmentNumber?: string;
+    }
+  ) =>
+    request<{
+      success: boolean;
+      message: string;
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        role: "student" | "faculty" | "hod";
+        department?: string;
+        enrollmentNumber?: string | null;
+        status: "invited" | "active" | "disabled";
+      };
+    }>(tenantPath(tenantSlug, `/admin/users/${userId}`), {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  setUserStatus: (
+    token: string,
+    tenantSlug: string,
+    userId: string,
+    status: "invited" | "active" | "disabled"
+  ) =>
+    request<{
+      success: boolean;
+      message: string;
+      user: {
+        id: string;
+        status: "invited" | "active" | "disabled";
+      };
+    }>(tenantPath(tenantSlug, `/admin/users/${userId}/status`), {
+      method: "PATCH",
+      token,
+      body: { status },
     }),
 };

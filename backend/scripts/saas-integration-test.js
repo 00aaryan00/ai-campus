@@ -3,9 +3,15 @@
  * Run: node scripts/saas-integration-test.js
  */
 const dotenv = require("dotenv");
-dotenv.config();
+const path = require("path");
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const BASE = process.env.TEST_BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+const TENANT_SLUG = process.env.TEST_TENANT_SLUG || "test-tenant";
+const TENANT_EMAIL_DOMAIN = process.env.TEST_TENANT_EMAIL_DOMAIN || "saas-test.local";
+
+const connectDB = require("../src/config/db");
+const Institution = require("../src/models/Institution");
 
 const results = [];
 let passed = 0;
@@ -24,11 +30,29 @@ const sampleQuestion = (text, correct = "B") => ({
   topic: "integration-test",
 });
 
+function rewriteTenantPath(path) {
+  // Backend is tenant-scoped: /api/t/:tenantSlug/{auth,tests,results}/...
+  // The script historically used non-tenant paths, so we rewrite them here.
+  if (typeof path !== "string") return path;
+
+  if (path.startsWith("/api/tests")) {
+    return path.replace("/api/tests", `/api/t/${TENANT_SLUG}/tests`);
+  }
+  if (path.startsWith("/api/results")) {
+    return path.replace("/api/results", `/api/t/${TENANT_SLUG}/results`);
+  }
+  if (path.startsWith("/api/auth")) {
+    return path.replace("/api/auth", `/api/t/${TENANT_SLUG}/auth`);
+  }
+  return path;
+}
+
 async function request(method, path, { token, body, expectStatus } = {}) {
+  const rewrittenPath = rewriteTenantPath(path);
   const headers = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${BASE}${rewrittenPath}`, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -81,24 +105,64 @@ function assertTruthy(value, label) {
 }
 
 async function registerUser(role, suffix) {
-  const email = `${role}.${suffix}@saas-test.local`;
-  const res = await request("POST", "/api/auth/register", {
-    body: {
-      name: `${role} ${suffix}`,
-      email,
-      password: "TestPass123!",
-      role,
-      department: "CSE",
-    },
-  });
-  assertStatus(res, 201, `register ${role}`);
-  assertTruthy(res.data?.token, "register token");
-  return { email, token: res.data.token, user: res.data.user };
+  const email = `${role}.${suffix}@${TENANT_EMAIL_DOMAIN}`;
+
+  // Direct /auth/register is disabled in the new backend; use tenant-aware signup-request.
+  const signupRes = await request(
+    "POST",
+    `/api/t/${TENANT_SLUG}/auth/signup-request`,
+    {
+      body: {
+        name: `${role} ${suffix}`,
+        email,
+        role,
+        department: "CSE",
+        // Enrollment is only needed for roster_based mode; included for realism.
+        enrollmentNumber: `ENR-${suffix}`,
+      },
+    }
+  );
+  assertStatus(signupRes, 200, `signup-request ${role}`);
+
+  // In non-production, backend returns a dev-only generated password to enable E2E testing.
+  const password = signupRes.data?.devGeneratedPassword;
+  if (!password) {
+    throw new Error(
+      `signup-request did not return devGeneratedPassword for ${email}. ` +
+        `Make sure NODE_ENV is not 'production' and the institution domains match.`
+    );
+  }
+
+  const loginRes = await request(
+    "POST",
+    `/api/t/${TENANT_SLUG}/auth/login`,
+    {
+      body: { email, password },
+    }
+  );
+  assertStatus(loginRes, 200, `login ${role}`);
+  assertTruthy(loginRes.data?.token, "login token");
+  return { email, password, token: loginRes.data.token, user: loginRes.data.user };
 }
 
 async function main() {
   console.log(`\n=== AI Campus Backend — SaaS Integration Test ===`);
   console.log(`Base URL: ${BASE}\n`);
+
+  // Ensure the tenant exists for tenant-scoped APIs.
+  // (We create it directly via Mongo so this script works without super_admin seed credentials.)
+  await connectDB();
+  const existingTenant = await Institution.findOne({ slug: TENANT_SLUG });
+  if (!existingTenant) {
+    await Institution.create({
+      name: "Test Tenant",
+      slug: TENANT_SLUG,
+      status: "active",
+      authMode: "email_domain",
+      domains: [TENANT_EMAIL_DOMAIN],
+      branding: { displayName: "Test Tenant" },
+    });
+  }
 
   const runId = uid();
 
@@ -140,38 +204,44 @@ async function main() {
   });
 
   await test("Reject duplicate email registration", "Auth / Security", async () => {
-    const res = await request("POST", "/api/auth/register", {
-      body: {
-        name: "Dup",
-        email: faculty.email,
-        password: "TestPass123!",
-        role: "student",
-      },
-    });
-    assertStatus(res, 409, "duplicate");
+    const res = await request(
+      "POST",
+      `/api/t/${TENANT_SLUG}/auth/signup-request`,
+      {
+        body: {
+          name: "Dup",
+          email: faculty.email,
+          role: "student",
+          department: "CSE",
+          enrollmentNumber: `ENR-${runId}-dup`,
+        },
+      }
+    );
+    // In the new backend, duplicate signup returns a generic 200 response (idempotent).
+    assertStatus(res, 200, "duplicate signup");
     return {};
   });
 
-  await test("Reject registration with short password", "Auth / Validation", async () => {
-    const res = await request("POST", "/api/auth/register", {
+  await test("Reject signup-request missing role (email_domain)", "Auth / Validation", async () => {
+    const res = await request("POST", `/api/t/${TENANT_SLUG}/auth/signup-request`, {
       body: {
         name: "Bad",
-        email: `short.${runId}@saas-test.local`,
-        password: "123",
-        role: "student",
+        email: `norole.${runId}@${TENANT_EMAIL_DOMAIN}`,
+        department: "CSE",
       },
     });
-    assertStatus(res, 400, "short password");
+    assertStatus(res, 400, "missing role");
     return {};
   });
 
   await test("Reject invalid role", "Auth / Validation", async () => {
-    const res = await request("POST", "/api/auth/register", {
+    const res = await request("POST", `/api/t/${TENANT_SLUG}/auth/signup-request`, {
       body: {
         name: "Bad Role",
-        email: `badrole.${runId}@saas-test.local`,
-        password: "TestPass123!",
+        email: `badrole.${runId}@${TENANT_EMAIL_DOMAIN}`,
         role: "admin",
+        department: "CSE",
+        enrollmentNumber: `ENR-${runId}-bad`,
       },
     });
     assertStatus(res, 400, "invalid role");
@@ -179,25 +249,14 @@ async function main() {
   });
 
   await test("Normalize teacher alias to faculty on register", "Auth / Roles", async () => {
-    const email = `teacher.${runId}@saas-test.local`;
-    const res = await request("POST", "/api/auth/register", {
-      body: {
-        name: "Teacher Alias",
-        email,
-        password: "TestPass123!",
-        role: "teacher",
-      },
-    });
-    assertStatus(res, 201, "teacher register");
-    if (res.data?.user?.role !== "faculty") {
-      throw new Error(`expected faculty role, got ${res.data?.user?.role}`);
-    }
+    const teacher = await registerUser("teacher", runId);
+    if (teacher.user?.role !== "faculty") throw new Error(`expected faculty role, got ${teacher.user?.role}`);
     return {};
   });
 
   await test("Login with valid credentials", "Auth", async () => {
     const res = await request("POST", "/api/auth/login", {
-      body: { email: student.email, password: "TestPass123!" },
+      body: { email: student.email, password: student.password },
     });
     assertStatus(res, 200, "login");
     assertTruthy(res.data?.token, "login token");

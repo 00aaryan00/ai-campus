@@ -22,6 +22,18 @@ const testSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    institutionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Institution",
+      default: null,
+      index: true,
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

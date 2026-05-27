@@ -139,8 +139,8 @@ export default function LandingPage() {
           <button id="theme-toggle" onClick={toggleTheme} className={styles.themeToggle} title="Toggle theme">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <Link to="/login" className={`${styles.btn} ${styles['btn-secondary']}`}>Log in</Link>
-          <Link to="/signup" className={`${styles.btn} ${styles['btn-primary']}`}>Get Started</Link>
+          <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-secondary']}`}>Log in</Link>
+          <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-primary']}`}>Get Started</Link>
         </div>
       </nav>
 
@@ -157,8 +157,8 @@ export default function LandingPage() {
             Track performance in real-time. Elevate your classroom to the next level.
           </p>
           <div className={styles.heroCta}>
-            <Link to="/signup" className={`${styles.btn} ${styles['btn-primary']} ${styles['btn-lg']}`}>Start for Free →</Link>
-            <Link to="/login" className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-lg']}`}>Sign In</Link>
+            <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-primary']} ${styles['btn-lg']}`}>Start for Free →</Link>
+            <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-lg']}`}>Sign In</Link>
           </div>
           <div className={styles.heroStats}>
             <div className={styles.heroStat}>
@@ -380,8 +380,8 @@ export default function LandingPage() {
           <h2 className={styles.ctaTitle}>Ready to transform your classroom?</h2>
           <p className={styles.ctaText}>Join thousands of educators using AI to create better assessments.</p>
           <div className={styles.ctaButtons}>
-            <Link to="/signup" className={`${styles.btn} ${styles['btn-primary']} ${styles['btn-lg']}`}>Get Started Free →</Link>
-            <Link to="/login" className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-lg']}`}>Sign In</Link>
+            <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-primary']} ${styles['btn-lg']}`}>Get Started Free →</Link>
+            <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-secondary']} ${styles['btn-lg']}`}>Sign In</Link>
           </div>
         </div>
       </section>

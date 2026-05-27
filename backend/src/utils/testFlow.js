@@ -100,9 +100,10 @@ const getAssignedSetForStudent = async (test, studentId) => {
   }
 };
 
-const loadQuestionsForSet = (testId, setType) =>
+const loadQuestionsForSet = (testId, setType, institutionId = null) =>
   Question.find({
     testId,
+    ...(institutionId ? { institutionId } : {}),
     setType,
   }).sort({ createdAt: 1 });
 
@@ -250,14 +251,15 @@ const normalizeQuestionSets = (mode, sets) => {
   return { value: normalizedSets };
 };
 
-const replaceTestQuestions = async (testId, normalizedSets, session) => {
+const replaceTestQuestions = async (testId, normalizedSets, session, institutionId = null) => {
   // Draft updates replace the entire stored paper so frontend can send the confirmed final version once.
-  await Question.deleteMany({ testId }, { session });
+  await Question.deleteMany({ testId, ...(institutionId ? { institutionId } : {}) }, { session });
 
   const questionDocuments = VALID_SET_TYPES.flatMap((setType) =>
     (normalizedSets[setType] || []).map((question) => ({
       ...question,
       testId,
+      ...(institutionId ? { institutionId } : {}),
       setType,
     }))
   );
@@ -303,7 +305,7 @@ const resolveStudentAttemptEntry = async (test, studentId) => {
     };
   }
 
-  const questions = await loadQuestionsForSet(test._id, assignedSet);
+  const questions = await loadQuestionsForSet(test._id, assignedSet, test.institutionId);
 
   if (questions.length === 0) {
     return {
@@ -327,6 +329,7 @@ const resolveStudentAttemptEntry = async (test, studentId) => {
     // One student gets exactly one attempt record for a test; if start is clicked twice we reuse it.
     const attempt = await TestAttempt.create({
       studentId,
+      institutionId: test.institutionId || null,
       testId: test._id,
       assignedSet,
       roomCodeSnapshot: test.roomCode,

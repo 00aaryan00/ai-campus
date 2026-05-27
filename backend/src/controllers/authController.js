@@ -1,83 +1,247 @@
 const User = require("../models/User");
+const RosterEntry = require("../models/RosterEntry");
 const generateToken = require("../utils/generateToken");
+const {
+  generateProvisionedPassword,
+  sendProvisionedPassword,
+} = require("../utils/passwordProvisioning");
+
+const SELF_SIGNUP_ROLES = ["student", "faculty", "hod"];
 
 const normalizeRole = (role) => {
   if (!role) {
     return role;
   }
 
-  return role === "teacher" ? "faculty" : role;
+  return role === "teacher" ? "faculty" : String(role).trim().toLowerCase();
 };
 
-const validateRegisterBody = ({ name, email, password, role }) => {
-  if (!name || !email || !password || !role) {
-    return "name, email, password, and role are required";
-  }
+const toTitleCase = (value) =>
+  String(value || "")
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
 
-  if (password.length < 6) {
-    return "Password must be at least 6 characters long";
-  }
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
-  if (!User.allowedRoles.includes(role)) {
-    return `Role must be one of: ${User.allowedRoles.join(", ")}`;
-  }
-
-  return null;
+const genericSignupResponse = {
+  success: true,
+  message:
+    "If your details are valid for this institution, credentials will be sent to your email.",
 };
 
-const registerUser = async (req, res, next) => {
-  try {
-    const { name, email, password, department } = req.body;
-    const normalizedRole = normalizeRole(req.body.role);
-    const validationError = validateRegisterBody({
-      name,
+const getDomainFromEmail = (email) => {
+  const pieces = String(email || "").split("@");
+  if (pieces.length !== 2) {
+    return "";
+  }
+
+  return pieces[1].trim().toLowerCase();
+};
+
+const normalizeDomainValue = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "");
+
+const getEligibilityForTenant = async ({
+  tenant,
+  email,
+  requestedRole,
+  enrollmentNumber,
+  fallbackName,
+  fallbackDepartment,
+}) => {
+  if (tenant.authMode === "email_domain") {
+    const emailDomain = getDomainFromEmail(email);
+    const allowedDomains = (tenant.domains || [])
+      .map((d) => normalizeDomainValue(d))
+      .filter(Boolean);
+
+    if (!emailDomain || !allowedDomains.includes(emailDomain)) {
+      return { eligible: false };
+    }
+
+    return {
+      eligible: true,
+      profile: {
+        name: fallbackName || toTitleCase(email.split("@")[0]),
+        role: requestedRole,
+        department: fallbackDepartment || "",
+        enrollmentNumber: requestedRole === "student" ? enrollmentNumber || null : null,
+      },
+    };
+  }
+
+  if (tenant.authMode === "roster_based") {
+    const rosterEntry = await RosterEntry.findOne({
+      institutionId: tenant._id,
       email,
-      password,
-      role: normalizedRole,
+      isActive: true,
     });
 
-    if (validationError) {
+    if (!rosterEntry) {
+      return { eligible: false };
+    }
+
+    if (requestedRole && requestedRole !== rosterEntry.role) {
+      return { eligible: false };
+    }
+
+    if (
+      rosterEntry.role === "student" &&
+      rosterEntry.enrollmentNumber &&
+      enrollmentNumber &&
+      String(rosterEntry.enrollmentNumber) !== String(enrollmentNumber)
+    ) {
+      return { eligible: false };
+    }
+
+    if (
+      rosterEntry.role === "student" &&
+      rosterEntry.enrollmentNumber &&
+      !String(enrollmentNumber || "").trim()
+    ) {
+      return { eligible: false };
+    }
+
+    return {
+      eligible: true,
+      profile: {
+        name: rosterEntry.name,
+        role: rosterEntry.role,
+        department: rosterEntry.department || "",
+        enrollmentNumber: rosterEntry.role === "student" ? rosterEntry.enrollmentNumber || null : null,
+      },
+    };
+  }
+
+  return { eligible: false };
+};
+
+const registerUser = async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message:
+      "Direct registration is disabled. Use /auth/signup-request for tenant-aware signup.",
+  });
+};
+
+const signupRequest = async (req, res, next) => {
+  try {
+    if (!req.tenant?._id) {
       return res.status(400).json({
         success: false,
-        message: validationError,
+        message: "Tenant context is required",
       });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const email = normalizeEmail(req.body.email);
+    const requestedRole = normalizeRole(req.body.role);
+    const enrollmentNumber = String(req.body.enrollmentNumber || "").trim();
+    const providedName = String(req.body.name || "").trim();
+    const providedDepartment = String(req.body.department || "").trim();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "email is required",
+      });
+    }
+
+    if (requestedRole && !SELF_SIGNUP_ROLES.includes(requestedRole)) {
+      return res.status(400).json({
+        success: false,
+        message: `role must be one of: ${SELF_SIGNUP_ROLES.join(", ")}`,
+      });
+    }
+
+    if (req.tenant.authMode === "email_domain" && !requestedRole) {
+      return res.status(400).json({
+        success: false,
+        message: `role is required for email_domain mode and must be one of: ${SELF_SIGNUP_ROLES.join(
+          ", "
+        )}`,
+      });
+    }
+
+    const eligibility = await getEligibilityForTenant({
+      tenant: req.tenant,
+      email,
+      requestedRole,
+      enrollmentNumber,
+      fallbackName: providedName,
+      fallbackDepartment: providedDepartment,
+    });
+
+    if (!eligibility.eligible) {
+      return res.status(200).json(genericSignupResponse);
+    }
+
+    const existingUser = await User.findOne({
+      email,
+      institutionId: req.tenant._id,
+    });
 
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "User already exists with this email",
-      });
+      if (existingUser.status === "disabled") {
+        return res.status(403).json({
+          success: false,
+          message: "Your account is disabled. Contact institution admin.",
+        });
+      }
+
+      return res.status(200).json(genericSignupResponse);
     }
 
+    const generatedPassword = generateProvisionedPassword();
+
     const user = await User.create({
-      name,
+      name: eligibility.profile.name,
       email,
-      password,
-      role: normalizedRole,
-      department,
+      password: generatedPassword,
+      role: eligibility.profile.role,
+      department: eligibility.profile.department,
+      enrollmentNumber: eligibility.profile.enrollmentNumber,
+      status: "active",
+      mustChangePassword: false,
+      institutionId: req.tenant._id,
     });
 
-    const token = generateToken({
-      userId: user._id,
+    await sendProvisionedPassword({
+      tenantSlug: req.tenant.slug,
+      institutionName: req.tenant.name,
+      email,
+      name: user.name,
       role: user.role,
+      password: generatedPassword,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      token,
-      user: user.toSafeObject(),
+    return res.status(200).json({
+      ...genericSignupResponse,
+      ...(process.env.NODE_ENV !== "production"
+        ? { devGeneratedPassword: generatedPassword }
+        : {}),
     });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(200).json(genericSignupResponse);
+    }
     next(error);
   }
 };
 
 const loginUser = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -87,9 +251,12 @@ const loginUser = async (req, res, next) => {
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({
+      email: normalizeEmail(email),
+      institutionId: req.tenant._id,
+    });
 
-    if (!user) {
+    if (!user || user.status === "disabled") {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -105,8 +272,12 @@ const loginUser = async (req, res, next) => {
       });
     }
 
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = generateToken({
       userId: user._id,
+      institutionId: user.institutionId,
       role: user.role,
     });
 
@@ -134,6 +305,7 @@ const getCurrentUser = async (req, res, next) => {
 
 module.exports = {
   registerUser,
+  signupRequest,
   loginUser,
   getCurrentUser,
 };
