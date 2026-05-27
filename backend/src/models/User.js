@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const allowedRoles = ["student", "faculty", "hod"];
+const allowedRoles = ["super_admin", "institution_admin", "hod", "faculty", "student"];
 
 const userSchema = new mongoose.Schema(
   {
@@ -13,9 +13,14 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
+    },
+    institutionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Institution",
+      default: null,
+      index: true,
     },
     password: {
       type: String,
@@ -26,6 +31,25 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: allowedRoles,
       required: true,
+    },
+    status: {
+      type: String,
+      enum: ["invited", "active", "disabled"],
+      default: "active",
+      index: true,
+    },
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
+    enrollmentNumber: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
     },
     department: {
       type: String,
@@ -57,12 +81,19 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     id: this._id,
     name: this.name,
     email: this.email,
+    institutionId: this.institutionId,
     role: this.role,
+    status: this.status,
+    mustChangePassword: this.mustChangePassword,
+    enrollmentNumber: this.enrollmentNumber,
+    lastLoginAt: this.lastLoginAt,
     department: this.department,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };
 };
+
+userSchema.index({ institutionId: 1, email: 1 }, { unique: true, sparse: true });
 
 userSchema.statics.allowedRoles = allowedRoles;
 

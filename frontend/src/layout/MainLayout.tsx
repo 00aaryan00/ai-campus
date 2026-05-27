@@ -55,7 +55,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const role = location.pathname.includes("faculty")
     ? "faculty"
-    : location.pathname.includes("principal")
+    : location.pathname.includes("principal") || location.pathname.includes("admin")
     ? "principal"
     : location.pathname.includes("hod")
     ? "hod"
@@ -63,7 +63,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    const parts = location.pathname.split("/").filter(Boolean);
+    const routeTenant = parts[0] === "t" ? parts[1] : null;
+    navigate(routeTenant ? `/t/${routeTenant}/login` : "/");
   };
 
   const changeTab = (tabId: string) => {

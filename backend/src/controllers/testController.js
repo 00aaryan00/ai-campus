@@ -31,6 +31,11 @@ const loadFacultyTestView = async (test) => {
   return buildFacultyTestPayload(test, groupQuestionsBySet(questions));
 };
 
+const normalizeDepartment = (value) => String(value || "").trim().toLowerCase();
+
+const getTestDepartment = (test) =>
+  normalizeDepartment(test?.department || test?.createdBy?.department);
+
 const createTestWithSets = async (testData, normalizedSets, useTransaction = true) => {
   let session;
 
@@ -43,7 +48,12 @@ const createTestWithSets = async (testData, normalizedSets, useTransaction = tru
 
     const createOptions = session ? { session } : undefined;
     const [test] = await Test.create([testData], createOptions);
-    const groupedQuestions = await replaceTestQuestions(test._id, normalizedSets, session);
+    const groupedQuestions = await replaceTestQuestions(
+      test._id,
+      normalizedSets,
+      session,
+      testData.institutionId || null
+    );
 
     if (session) {
       await session.commitTransaction();
@@ -87,7 +97,7 @@ const updateDraftWithSets = async (test, normalizedSets, useTransaction = true) 
 
     const groupedQuestions =
       normalizedSets !== undefined
-        ? await replaceTestQuestions(test._id, normalizedSets, session)
+        ? await replaceTestQuestions(test._id, normalizedSets, session, test.institutionId || null)
         : groupQuestionsBySet(
             await Question.find({ testId: test._id }).sort({ createdAt: 1 }).session(session || null)
           );
@@ -114,7 +124,22 @@ const updateDraftWithSets = async (test, normalizedSets, useTransaction = true) 
 
 const createTest = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { title, subject, mode, duration, instructions, sets } = req.body;
+    const facultyDepartment = normalizeDepartment(req.user.department);
+
+    if (!facultyDepartment) {
+      return res.status(400).json({
+        success: false,
+        message: "Faculty department is required to create a test",
+      });
+    }
 
     if (!title || !subject || !duration) {
       return res.status(400).json({
@@ -174,6 +199,8 @@ const createTest = async (req, res, next) => {
         subject,
         mode: normalizedMode,
         duration: numericDuration,
+        institutionId: req.tenant._id,
+        department: facultyDepartment,
         instructions,
         createdBy: req.user._id,
         status: "published",
@@ -196,6 +223,13 @@ const createTest = async (req, res, next) => {
 
 const saveDraftTest = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { title, subject, mode, duration, instructions, sets } = req.body;
 
     if (!title || !subject || !duration) {
@@ -237,6 +271,7 @@ const saveDraftTest = async (req, res, next) => {
         subject,
         mode: normalizedMode,
         duration: numericDuration,
+        institutionId: req.tenant._id,
         instructions,
         createdBy: req.user._id,
         status: "draft",
@@ -259,6 +294,13 @@ const saveDraftTest = async (req, res, next) => {
 
 const updateTestDraft = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { id } = req.params;
     const { title, subject, mode, duration, instructions, sets } = req.body;
 
@@ -269,7 +311,10 @@ const updateTestDraft = async (req, res, next) => {
       });
     }
 
-    const test = await Test.findById(id);
+    const test = await Test.findOne({
+      _id: id,
+      institutionId: req.tenant._id,
+    });
 
     if (!test) {
       return res.status(404).json({
@@ -365,6 +410,13 @@ const updateTestDraft = async (req, res, next) => {
 
 const joinTestByCode = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { roomCode } = req.body;
 
     if (!roomCode || typeof roomCode !== "string") {
@@ -379,12 +431,22 @@ const joinTestByCode = async (req, res, next) => {
     const test = await Test.findOne({
       roomCode: normalizedRoomCode,
       status: "published",
+      institutionId: req.tenant._id,
     }).populate("createdBy", "name email role department");
 
     if (!test) {
       return res.status(404).json({
         success: false,
         message: "No published test found for this room code",
+      });
+    }
+
+    const testDepartment = getTestDepartment(test);
+    const studentDepartment = normalizeDepartment(req.user.department);
+    if (testDepartment && studentDepartment && testDepartment !== studentDepartment) {
+      return res.status(403).json({
+        success: false,
+        message: "This test belongs to a different department",
       });
     }
 
@@ -417,7 +479,7 @@ const joinTestByCode = async (req, res, next) => {
     }
 
     const assignedSet = await getAssignedSetForStudent(test, req.user._id);
-    const questions = await loadQuestionsForSet(test._id, assignedSet);
+    const questions = await loadQuestionsForSet(test._id, assignedSet, req.tenant._id);
 
     if (questions.length === 0) {
       return res.status(400).json({
@@ -445,6 +507,13 @@ const joinTestByCode = async (req, res, next) => {
 
 const startTest = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -454,12 +523,24 @@ const startTest = async (req, res, next) => {
       });
     }
 
-    const test = await Test.findById(id).populate("createdBy", "name email role department");
+    const test = await Test.findOne({
+      _id: id,
+      institutionId: req.tenant._id,
+    }).populate("createdBy", "name email role department");
 
     if (!test) {
       return res.status(404).json({
         success: false,
         message: "Test not found",
+      });
+    }
+
+    const testDepartment = getTestDepartment(test);
+    const studentDepartment = normalizeDepartment(req.user.department);
+    if (testDepartment && studentDepartment && testDepartment !== studentDepartment) {
+      return res.status(403).json({
+        success: false,
+        message: "This test belongs to a different department",
       });
     }
 
@@ -510,6 +591,13 @@ const startTest = async (req, res, next) => {
 
 const publishTest = async (req, res, next) => {
   try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant context is required",
+      });
+    }
+
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -519,7 +607,10 @@ const publishTest = async (req, res, next) => {
       });
     }
 
-    const test = await Test.findById(id);
+    const test = await Test.findOne({
+      _id: id,
+      institutionId: req.tenant._id,
+    });
 
     if (!test) {
       return res.status(404).json({

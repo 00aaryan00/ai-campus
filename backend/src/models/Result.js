@@ -57,6 +57,12 @@ const resultSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    institutionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Institution",
+      default: null,
+      index: true,
+    },
     testId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Test",

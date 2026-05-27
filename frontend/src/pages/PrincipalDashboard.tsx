@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import Charts from "../components/Charts";
 import DayStatusCard from "../components/DayStatusCard";
@@ -50,6 +51,7 @@ const SectionHeader = ({
 );
 
 export default function PrincipalDashboard() {
+  const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<PrincipalData | null>(null);
   const [leaveOverview, setLeaveOverview] = useState<LeaveRequest[]>([]);
@@ -123,6 +125,14 @@ export default function PrincipalDashboard() {
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
           Welcome back, {data.name} 👋
         </p>
+        {tenantSlug ? (
+          <Link
+            to={`/t/${tenantSlug}/admin/onboarding`}
+            className="mt-3 inline-block rounded-xl bg-cyan-500/20 px-4 py-2 text-sm font-semibold text-cyan-300"
+          >
+            Open Tenant Onboarding
+          </Link>
+        ) : null}
       </div>
 
       {activeTab === "dashboard" && (

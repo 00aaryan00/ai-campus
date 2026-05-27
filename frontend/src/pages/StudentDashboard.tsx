@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import Charts from "../components/Charts";
 import DayStatusCard, {
@@ -98,6 +98,7 @@ const SectionHeader = ({
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<StudentData | null>(null);
 
@@ -220,7 +221,7 @@ export default function StudentDashboard() {
       return;
     }
 
-    navigate(`/take-test?code=${enteredExamCode.trim().toUpperCase()}`);
+    navigate(`/t/${tenantSlug}/take-test?code=${enteredExamCode.trim().toUpperCase()}`);
   };
 
   if (!data) {
