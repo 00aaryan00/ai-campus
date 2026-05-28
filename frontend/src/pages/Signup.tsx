@@ -59,7 +59,7 @@ export default function Signup() {
 
   const canStep2 = Boolean(role);
   const canStep3 = name.trim().length >= 2 && email.includes("@") && department.trim().length >= 2;
-  const needsEnrollment = role === "student" && tenant?.authMode === "roster_based";
+  const needsEnrollment = role === "student";
   const emailFieldLabel =
     tenant?.authMode === "roster_based" ? "Institute-registered email" : "Institution domain email";
   const emailFieldHint =

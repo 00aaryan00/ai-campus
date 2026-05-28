@@ -61,7 +61,10 @@ const getEligibilityForTenant = async ({
       .filter(Boolean);
 
     if (!emailDomain || !allowedDomains.includes(emailDomain)) {
-      return { eligible: false };
+      return { 
+        eligible: false, 
+        reason: `Email domain '@${emailDomain}' is not allowed. Allowed domains are: ${allowedDomains.map(d=>'@'+d).join(', ')}` 
+      };
     }
 
     return {
@@ -83,11 +86,11 @@ const getEligibilityForTenant = async ({
     });
 
     if (!rosterEntry) {
-      return { eligible: false };
+      return { eligible: false, reason: "Email not found in the institution's roster." };
     }
 
     if (requestedRole && requestedRole !== rosterEntry.role) {
-      return { eligible: false };
+      return { eligible: false, reason: `Role mismatch. Expected ${rosterEntry.role}.` };
     }
 
     if (
@@ -96,7 +99,7 @@ const getEligibilityForTenant = async ({
       enrollmentNumber &&
       String(rosterEntry.enrollmentNumber) !== String(enrollmentNumber)
     ) {
-      return { eligible: false };
+      return { eligible: false, reason: "Enrollment number does not match roster records." };
     }
 
     if (
@@ -104,7 +107,7 @@ const getEligibilityForTenant = async ({
       rosterEntry.enrollmentNumber &&
       !String(enrollmentNumber || "").trim()
     ) {
-      return { eligible: false };
+      return { eligible: false, reason: "Enrollment number is required by the roster." };
     }
 
     return {
@@ -118,7 +121,7 @@ const getEligibilityForTenant = async ({
     };
   }
 
-  return { eligible: false };
+  return { eligible: false, reason: "Invalid authentication mode for tenant." };
 };
 
 const registerUser = async (req, res) => {
@@ -177,7 +180,10 @@ const signupRequest = async (req, res, next) => {
     });
 
     if (!eligibility.eligible) {
-      return res.status(200).json(genericSignupResponse);
+      return res.status(400).json({
+        success: false,
+        message: eligibility.reason || "Not eligible for signup.",
+      });
     }
 
     const existingUser = await User.findOne({
@@ -193,7 +199,10 @@ const signupRequest = async (req, res, next) => {
         });
       }
 
-      return res.status(200).json(genericSignupResponse);
+      return res.status(400).json({
+        success: false,
+        message: "An account with this email already exists. Please log in.",
+      });
     }
 
     const generatedPassword = generateProvisionedPassword();
@@ -221,9 +230,7 @@ const signupRequest = async (req, res, next) => {
 
     return res.status(200).json({
       ...genericSignupResponse,
-      ...(process.env.NODE_ENV !== "production"
-        ? { devGeneratedPassword: generatedPassword }
-        : {}),
+      devGeneratedPassword: generatedPassword,
     });
   } catch (error) {
     if (error?.code === 11000) {
