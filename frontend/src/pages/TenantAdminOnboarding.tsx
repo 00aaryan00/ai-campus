@@ -138,6 +138,8 @@ export default function TenantAdminOnboarding() {
   const [rosterEntries, setRosterEntries] = useState<RosterEntry[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"" | "student" | "faculty" | "hod">("");
+  const [rosterDepartmentFilter, setRosterDepartmentFilter] = useState("");
+  const [rosterIsActiveFilter, setRosterIsActiveFilter] = useState<"" | "true" | "false">("");
   const [rosterSearch, setRosterSearch] = useState("");
   const [lastRosterSyncAt, setLastRosterSyncAt] = useState<Date | null>(null);
   const [users, setUsers] = useState<ManagedUser[]>([]);
@@ -169,6 +171,11 @@ export default function TenantAdminOnboarding() {
     try {
       const response = await tenantAdminApi.listRoster(authToken, tenantSlug, {
         role: rosterRoleFilter || undefined,
+        department: rosterDepartmentFilter.trim() || undefined,
+        isActive:
+          rosterIsActiveFilter === ""
+            ? undefined
+            : rosterIsActiveFilter === "true",
       });
       setRosterEntries(response.entries);
       
@@ -233,7 +240,7 @@ export default function TenantAdminOnboarding() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantSlug, token, rosterRoleFilter, userRoleFilter]);
+  }, [tenantSlug, token, rosterRoleFilter, rosterDepartmentFilter, rosterIsActiveFilter, userRoleFilter]);
 
   const parseRosterFile = async (file: File) => {
     const lower = file.name.toLowerCase();
@@ -432,6 +439,26 @@ export default function TenantAdminOnboarding() {
             <span className="ml-2 text-slate-300">Users signup via institute-registered roster email.</span>
           )}
         </div>
+        {authMode === "email_domain" ? (
+          <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
+            <div className="font-semibold text-slate-200">Allowed Domains</div>
+            {domains.trim() ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {domains
+                  .split(",")
+                  .map((d) => d.trim())
+                  .filter(Boolean)
+                  .map((domain) => (
+                    <span key={domain} className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
+                      {domain}
+                    </span>
+                  ))}
+              </div>
+            ) : (
+              <div className="mt-1 text-slate-400">No domains configured.</div>
+            )}
+          </div>
+        ) : null}
 
         {authMode === "roster_based" ? (
           <>
@@ -507,6 +534,27 @@ export default function TenantAdminOnboarding() {
                     <option value="hod">HOD</option>
                   </select>
                 </div>
+                <div className="min-w-[200px]">
+                  <label className="text-xs text-slate-400">Department</label>
+                  <input
+                    value={rosterDepartmentFilter}
+                    onChange={(e) => setRosterDepartmentFilter(e.target.value)}
+                    placeholder="e.g. CSE"
+                    className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-2 text-sm"
+                  />
+                </div>
+                <div className="min-w-[160px]">
+                  <label className="text-xs text-slate-400">Active</label>
+                  <select
+                    value={rosterIsActiveFilter}
+                    onChange={(e) => setRosterIsActiveFilter(e.target.value as "" | "true" | "false")}
+                    className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-2 text-sm"
+                  >
+                    <option value="">All</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
                 <div className="min-w-[240px] flex-1">
                   <label className="text-xs text-slate-400">Search</label>
                   <input
@@ -521,6 +569,17 @@ export default function TenantAdminOnboarding() {
                   className="rounded-lg border border-emerald-300/40 px-4 py-2 text-emerald-200 font-semibold text-sm"
                 >
                   Refresh roster
+                </button>
+                <button
+                  onClick={() => {
+                    setRosterRoleFilter("");
+                    setRosterDepartmentFilter("");
+                    setRosterIsActiveFilter("");
+                    setRosterSearch("");
+                  }}
+                  className="rounded-lg border border-white/20 px-4 py-2 text-sm"
+                >
+                  Clear filters
                 </button>
               </div>
 
@@ -717,7 +776,7 @@ export default function TenantAdminOnboarding() {
         <div className="mt-4 rounded-xl border border-white/10 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-xl font-bold">Registered Users (From User Collection)</h2>
+              <h2 className="text-xl font-bold">Registered Users</h2>
               <p className="text-sm text-slate-300">Student, faculty, and HOD users for this institution.</p>
             </div>
             <p className="text-xs text-slate-400">Last synced: {lastUsersSyncAt ? lastUsersSyncAt.toLocaleTimeString() : "not loaded"}</p>

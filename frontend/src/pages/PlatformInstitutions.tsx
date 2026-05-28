@@ -27,10 +27,13 @@ export default function PlatformInstitutions() {
       setLoading(true);
       setError("");
       try {
+        await platformApi.me(token);
         const response = await platformApi.listInstitutions();
         setInstitutions(response.institutions || []);
       } catch (err) {
+        localStorage.removeItem(PLATFORM_TOKEN_KEY);
         setError(err instanceof Error ? err.message : "Failed to load institutions");
+        navigate("/platform/login");
       } finally {
         setLoading(false);
       }

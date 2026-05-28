@@ -367,6 +367,20 @@ export const platformApi = {
       body: payload,
     }),
 
+  me: (token: string) =>
+    request<{
+      success: boolean;
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        role: "super_admin";
+      };
+    }>("/platform/auth/me", {
+      method: "GET",
+      token,
+    }),
+
   listInstitutions: () =>
     request<{
       success: boolean;
@@ -400,17 +414,6 @@ export const platformApi = {
 };
 
 export const tenantAdminApi = {
-  setAuthMode: (
-    token: string,
-    tenantSlug: string,
-    payload: { authMode: "email_domain" | "roster_based"; domains?: string[] }
-  ) =>
-    request<{ success: boolean; message: string }>(tenantPath(tenantSlug, "/admin/auth-mode"), {
-      method: "PATCH",
-      token,
-      body: payload,
-    }),
-
   uploadRosterCsv: (token: string, tenantSlug: string, csvContent: string) =>
     request<{
       success: boolean;
