@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { authApi, tenantAdminApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,6 +11,16 @@ type RosterEntry = {
   department?: string;
   enrollmentNumber?: string;
   isActive: boolean;
+};
+
+type ManagedUser = {
+  _id: string;
+  name: string;
+  email: string;
+  role: "student" | "faculty" | "hod";
+  department?: string;
+  enrollmentNumber?: string | null;
+  status: "invited" | "active" | "disabled";
 };
 
 type PreparedRosterRow = {
@@ -109,6 +119,7 @@ const toPreparedRows = (rows: Array<Record<string, unknown>>) =>
 export default function TenantAdminOnboarding() {
   const { token } = useAuth();
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const navigate = useNavigate();
   const authToken = token || localStorage.getItem("authToken");
 
   const [authMode, setAuthMode] = useState<"email_domain" | "roster_based">("email_domain");
@@ -129,6 +140,16 @@ export default function TenantAdminOnboarding() {
   const [rosterRoleFilter, setRosterRoleFilter] = useState<"" | "student" | "faculty" | "hod">("");
   const [rosterSearch, setRosterSearch] = useState("");
   const [lastRosterSyncAt, setLastRosterSyncAt] = useState<Date | null>(null);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userRoleFilter, setUserRoleFilter] = useState<"" | "student" | "faculty" | "hod">("");
+  const [userSearch, setUserSearch] = useState("");
+  const [lastUsersSyncAt, setLastUsersSyncAt] = useState<Date | null>(null);
+  const [managingUserId, setManagingUserId] = useState<string | null>(null);
+  const [userSavingId, setUserSavingId] = useState<string | null>(null);
+  const [userDrafts, setUserDrafts] = useState<
+    Record<string, { name: string; role: "student" | "faculty" | "hod"; department: string; enrollmentNumber: string; status: "invited" | "active" | "disabled" }>
+  >({});
 
   const [studentRows, setStudentRows] = useState<PreparedRosterRow[]>([]);
   const [studentFileName, setStudentFileName] = useState("");
@@ -174,17 +195,45 @@ export default function TenantAdminOnboarding() {
     }
   };
 
+  const loadUsers = async () => {
+    if (!tenantSlug || !authToken) return;
+    setUsersLoading(true);
+    try {
+      const response = await tenantAdminApi.listUsers(authToken, tenantSlug, {
+        role: userRoleFilter || undefined,
+      });
+      setUsers(response.users);
+      const drafts: Record<string, { name: string; role: "student" | "faculty" | "hod"; department: string; enrollmentNumber: string; status: "invited" | "active" | "disabled" }> = {};
+      response.users.forEach((u) => {
+        drafts[u._id] = {
+          name: u.name || "",
+          role: u.role,
+          department: u.department || "",
+          enrollmentNumber: u.enrollmentNumber || "",
+          status: u.status,
+        };
+      });
+      setUserDrafts(drafts);
+      setLastUsersSyncAt(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load users");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
         await loadTenantMeta();
         await loadRoster();
+        await loadUsers();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to initialize");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantSlug, token, rosterRoleFilter]);
+  }, [tenantSlug, token, rosterRoleFilter, userRoleFilter]);
 
   const parseRosterFile = async (file: File) => {
     const lower = file.name.toLowerCase();
@@ -323,10 +372,55 @@ export default function TenantAdminOnboarding() {
     [managingRosterId, rosterEntries]
   );
   const managingDraft = managingEntry ? rosterDrafts[managingEntry._id] : null;
+  const visibleUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) =>
+      [u.name, u.email, u.role, u.department || "", u.enrollmentNumber || "", u.status]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [users, userSearch]);
+  const managingUser = useMemo(
+    () => users.find((u) => u._id === managingUserId) || null,
+    [users, managingUserId]
+  );
+  const managingUserDraft = managingUser ? userDrafts[managingUser._id] : null;
+
+  const saveUserProfile = async (user: ManagedUser) => {
+    if (!tenantSlug || !authToken) return;
+    const draft = userDrafts[user._id];
+    if (!draft) return;
+    setUserSavingId(user._id);
+    setError("");
+    try {
+      await tenantAdminApi.updateUser(authToken, tenantSlug, user._id, {
+        name: draft.name.trim(),
+        role: draft.role,
+        department: draft.department.trim(),
+        enrollmentNumber: draft.role === "student" ? draft.enrollmentNumber.trim() : "",
+      });
+      await tenantAdminApi.setUserStatus(authToken, tenantSlug, user._id, draft.status);
+      setMsg(`Updated ${draft.name || user.name}`);
+      await loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update user");
+    } finally {
+      setUserSavingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#091222] text-slate-100 p-4">
       <div className="mx-auto max-w-[1450px] rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+          <div className="text-sm text-slate-300">Tenant Admin</div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => navigate(-1)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm">Back</button>
+            <button onClick={() => tenantSlug && navigate(`/t/${tenantSlug}/admin`)} className="rounded-lg border border-emerald-300/40 px-3 py-1.5 text-sm text-emerald-200">Admin Dashboard</button>
+          </div>
+        </div>
         <h1 className="text-2xl font-bold">Tenant Admin Onboarding</h1>
         <p className="text-slate-300 mt-1">Tenant: {tenantSlug}</p>
 
@@ -619,11 +713,55 @@ export default function TenantAdminOnboarding() {
               ) : null}
             </div>
           </>
-        ) : (
-          <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-500/10 p-4 text-sm text-amber-100">
-            Roster upload is hidden because this tenant uses <b>email_domain</b> auth mode.
+        ) : null}
+        <div className="mt-4 rounded-xl border border-white/10 p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-bold">Registered Users (From User Collection)</h2>
+              <p className="text-sm text-slate-300">Student, faculty, and HOD users for this institution.</p>
+            </div>
+            <p className="text-xs text-slate-400">Last synced: {lastUsersSyncAt ? lastUsersSyncAt.toLocaleTimeString() : "not loaded"}</p>
           </div>
-        )}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[160px]">
+              <label className="text-xs text-slate-400">Role</label>
+              <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value as "" | "student" | "faculty" | "hod")} className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-2 text-sm">
+                <option value="">All roles</option><option value="student">Student</option><option value="faculty">Faculty</option><option value="hod">HOD</option>
+              </select>
+            </div>
+            <div className="min-w-[240px] flex-1">
+              <label className="text-xs text-slate-400">Search</label>
+              <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Search name, email, role, dept, enrollment, status" className="mt-1 w-full rounded-lg border border-white/15 bg-black/20 p-2 text-sm" />
+            </div>
+            <button onClick={loadUsers} className="rounded-lg border border-emerald-300/40 px-4 py-2 text-emerald-200 font-semibold text-sm">Refresh users</button>
+          </div>
+          <div className="mt-4 max-h-[520px] overflow-auto rounded-lg border border-white/10">
+            <table className="w-full text-sm min-w-[1000px]">
+              <thead className="bg-white/5 sticky top-0"><tr><th className="px-3 py-2 text-left">Name</th><th className="px-3 py-2 text-left">Role</th><th className="px-3 py-2 text-left">Email</th><th className="px-3 py-2 text-left">Department</th><th className="px-3 py-2 text-left">Enrollment</th><th className="px-3 py-2 text-left">Status</th><th className="px-3 py-2 text-left">Action</th></tr></thead>
+              <tbody>
+                {usersLoading ? <tr><td className="px-3 py-3 text-slate-300" colSpan={7}>Loading users...</td></tr> : visibleUsers.length === 0 ? <tr><td className="px-3 py-3 text-slate-300" colSpan={7}>No registered users found.</td></tr> : visibleUsers.map((u) => (
+                  <tr key={u._id} className="border-t border-white/10"><td className="px-3 py-2">{u.name}</td><td className="px-3 py-2 capitalize">{u.role}</td><td className="px-3 py-2">{u.email}</td><td className="px-3 py-2">{u.department || "-"}</td><td className="px-3 py-2">{u.enrollmentNumber || "-"}</td><td className="px-3 py-2 capitalize">{u.status}</td><td className="px-3 py-2"><button onClick={() => setManagingUserId((prev) => (prev === u._id ? null : u._id))} className="rounded border border-white/20 px-3 py-1 text-xs font-semibold">{managingUserId === u._id ? "Close" : "Manage"}</button></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {managingUser && managingUserDraft ? (
+            <div className="mt-4 rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-4">
+              <h3 className="text-base font-bold">Manage User: {managingUser.email}</h3>
+              <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <input value={managingUserDraft.name} onChange={(e) => setUserDrafts((prev) => ({ ...prev, [managingUser._id]: { ...managingUserDraft, name: e.target.value } }))} className="rounded-lg border border-white/15 bg-black/20 p-2 text-sm" />
+                <select value={managingUserDraft.role} onChange={(e) => setUserDrafts((prev) => ({ ...prev, [managingUser._id]: { ...managingUserDraft, role: e.target.value as "student" | "faculty" | "hod", enrollmentNumber: e.target.value === "student" ? managingUserDraft.enrollmentNumber : "" } }))} className="rounded-lg border border-white/15 bg-black/20 p-2 text-sm"><option value="student">student</option><option value="faculty">faculty</option><option value="hod">hod</option></select>
+                <select value={managingUserDraft.status} onChange={(e) => setUserDrafts((prev) => ({ ...prev, [managingUser._id]: { ...managingUserDraft, status: e.target.value as "invited" | "active" | "disabled" } }))} className="rounded-lg border border-white/15 bg-black/20 p-2 text-sm"><option value="invited">invited</option><option value="active">active</option><option value="disabled">disabled</option></select>
+                <input value={managingUserDraft.department} onChange={(e) => setUserDrafts((prev) => ({ ...prev, [managingUser._id]: { ...managingUserDraft, department: e.target.value } }))} className="rounded-lg border border-white/15 bg-black/20 p-2 text-sm" />
+                <input value={managingUserDraft.enrollmentNumber} onChange={(e) => setUserDrafts((prev) => ({ ...prev, [managingUser._id]: { ...managingUserDraft, enrollmentNumber: e.target.value } }))} disabled={managingUserDraft.role !== "student"} className="rounded-lg border border-white/15 bg-black/20 p-2 text-sm disabled:opacity-50" />
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button disabled={userSavingId === managingUser._id} onClick={() => saveUserProfile(managingUser)} className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{userSavingId === managingUser._id ? "Saving..." : "Save user"}</button>
+                <button onClick={() => setManagingUserId(null)} className="rounded-lg border border-white/20 px-4 py-2 text-sm">Cancel</button>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         {msg ? <p className="mt-4 text-emerald-300">{msg}</p> : null}
         {error ? <p className="mt-4 text-rose-300">{error}</p> : null}

@@ -1,9 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { platformApi } from "../services/api";
+
+type InstitutionOption = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
 export default function TenantEntry() {
   const [tenantSlug, setTenantSlug] = useState("");
+  const [institutions, setInstitutions] = useState<InstitutionOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+
+    const loadInstitutions = async () => {
+      try {
+        const response = await platformApi.listInstitutions();
+        if (!active) return;
+        setInstitutions(response.institutions || []);
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Unable to load institutions");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadInstitutions();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const proceed = (target: "login" | "signup") => {
     const slug = tenantSlug.trim().toLowerCase();
@@ -15,13 +47,23 @@ export default function TenantEntry() {
     <div className="min-h-screen grid place-items-center bg-[#090f1e] px-4">
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-8 text-slate-100 backdrop-blur">
         <h1 className="text-2xl font-bold">Enter your institution</h1>
-        <p className="mt-2 text-slate-300">Use your tenant slug to continue.</p>
-        <input
+        <p className="mt-2 text-slate-300">Select your institution name to continue.</p>
+        <select
           value={tenantSlug}
           onChange={(e) => setTenantSlug(e.target.value)}
-          placeholder="e.g. rgipt"
+          disabled={loading || institutions.length === 0}
           className="mt-6 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-cyan-300"
-        />
+        >
+          <option value="">
+            {loading ? "Loading institutions..." : "Select institution"}
+          </option>
+          {institutions.map((institution) => (
+            <option key={institution.id} value={institution.slug}>
+              {institution.name} ({institution.slug})
+            </option>
+          ))}
+        </select>
+        {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             onClick={() => proceed("login")}

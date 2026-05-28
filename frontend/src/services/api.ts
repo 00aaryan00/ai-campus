@@ -354,11 +354,25 @@ type PlatformLoginResponse = {
   };
 };
 
+type PublicInstitution = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export const platformApi = {
   login: (payload: { email: string; password: string }) =>
     request<PlatformLoginResponse>("/platform/auth/login", {
       method: "POST",
       body: payload,
+    }),
+
+  listInstitutions: () =>
+    request<{
+      success: boolean;
+      institutions: PublicInstitution[];
+    }>("/platform/institutions", {
+      method: "GET",
     }),
 
   createInstitution: (

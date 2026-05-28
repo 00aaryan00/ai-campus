@@ -82,6 +82,15 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#172554,#0b1020_45%,#030712)] text-slate-100 p-4 md:p-8">
+      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-5 py-3">
+        <Link to="/" className="flex items-center gap-2 text-slate-100">
+          <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
+          <span className="font-semibold">AI Classroom</span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm">Back</button>
+        </div>
+      </div>
       <div className="mx-auto max-w-5xl rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl">
         <div className="grid md:grid-cols-[1.1fr_1.3fr]">
           <aside className="p-8 md:p-10 bg-gradient-to-b from-cyan-500/20 to-transparent">

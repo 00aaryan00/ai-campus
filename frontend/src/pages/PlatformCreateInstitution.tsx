@@ -52,6 +52,12 @@ export default function PlatformCreateInstitution() {
   return (
     <div className="min-h-screen bg-[#0b1020] p-4 text-slate-100">
       <div className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm">
+          <span className="text-slate-300">Platform Setup</span>
+          <div className="flex gap-2">
+            <button onClick={() => navigate("/platform/institutions")} className="rounded-md border border-white/20 px-2 py-1">Back</button>
+          </div>
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Create Institution</h1>
           <button className="text-cyan-300" onClick={() => navigate("/platform/login")}>Re-login</button>

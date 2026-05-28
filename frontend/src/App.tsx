@@ -5,6 +5,7 @@ import TenantEntry from "./pages/TenantEntry";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import PlatformLogin from "./pages/PlatformLogin";
+import PlatformInstitutions from "./pages/PlatformInstitutions";
 import PlatformCreateInstitution from "./pages/PlatformCreateInstitution";
 import TenantAdminOnboarding from "./pages/TenantAdminOnboarding";
 import StudentDashboard from "./pages/StudentDashboard";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/t/:tenantSlug/login" element={<Login />} />
         <Route path="/t/:tenantSlug/signup" element={<Signup />} />
         <Route path="/platform/login" element={<PlatformLogin />} />
+        <Route path="/platform/institutions" element={<PlatformInstitutions />} />
         <Route path="/platform/institutions/new" element={<PlatformCreateInstitution />} />
 
         <Route

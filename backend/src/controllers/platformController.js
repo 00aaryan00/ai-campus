@@ -56,6 +56,26 @@ const getPlatformMe = async (req, res) => {
   });
 };
 
+const listActiveInstitutions = async (req, res, next) => {
+  try {
+    const institutions = await Institution.find({ status: "active" })
+      .select("name slug")
+      .sort({ name: 1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      institutions: institutions.map((institution) => ({
+        id: institution._id,
+        name: institution.name,
+        slug: institution.slug,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const createInstitutionWithAdmin = async (req, res, next) => {
   try {
     const { name, slug, domains, authMode, adminName, adminEmail, adminPassword } = req.body;
@@ -132,5 +152,6 @@ const createInstitutionWithAdmin = async (req, res, next) => {
 module.exports = {
   loginSuperAdmin,
   getPlatformMe,
+  listActiveInstitutions,
   createInstitutionWithAdmin,
 };
