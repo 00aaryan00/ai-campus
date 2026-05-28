@@ -35,7 +35,7 @@ export default function PlatformCreateInstitution() {
       const res = await platformApi.createInstitution(token, {
         name: form.name.trim(),
         slug: form.slug.trim().toLowerCase(),
-        domains: form.domains.split(",").map((d) => d.trim().toLowerCase()).filter(Boolean),
+        domains: form.authMode === "email_domain" ? form.domains.split(",").map((d) => d.trim().toLowerCase()).filter(Boolean) : [],
         authMode: form.authMode,
         adminName: form.adminName.trim(),
         adminEmail: form.adminEmail.trim().toLowerCase(),
@@ -63,7 +63,9 @@ export default function PlatformCreateInstitution() {
             <option value="roster_based">roster_based</option>
             <option value="email_domain">email_domain</option>
           </select>
-          <input className="rounded-xl border border-white/15 bg-black/20 p-3" placeholder="Domains comma-separated (e.g. rgipt.ac.in)" value={form.domains} onChange={(e)=>set("domains", e.target.value)} />
+          {form.authMode === "email_domain" && (
+            <input className="rounded-xl border border-white/15 bg-black/20 p-3" placeholder="Domains comma-separated (e.g. rgipt.ac.in)" value={form.domains} onChange={(e)=>set("domains", e.target.value)} />
+          )}
           <hr className="border-white/10 my-2" />
           <input className="rounded-xl border border-white/15 bg-black/20 p-3" placeholder="Institution admin name" value={form.adminName} onChange={(e)=>set("adminName", e.target.value)} />
           <input className="rounded-xl border border-white/15 bg-black/20 p-3" placeholder="Institution admin email" value={form.adminEmail} onChange={(e)=>set("adminEmail", e.target.value)} />
