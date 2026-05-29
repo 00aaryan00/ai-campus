@@ -6,7 +6,7 @@ export default function ProgressCard({
   value: number;
 }) {
   return (
-    <div className="card-hover rounded-2xl border border-slate-200/60 bg-white p-6 shadow-card dark:border-blue-500/10 dark:bg-[#0C1330]">
+    <div className="card-hover rounded-2xl border border-slate-200/60 hover:border-gold-500 bg-white p-6 shadow-card dark:border-blue-500/10 dark:bg-[#0C1330] transition-all">
       <h3 className="mb-2 text-sm text-slate-500 dark:text-slate-400">
         {label}
       </h3>
@@ -18,7 +18,7 @@ export default function ProgressCard({
         />
       </div>
 
-      <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-blue-300">
+      <p className="mt-2 font-display text-3xl font-black text-gold-500 dark:text-blue-300">
         {value}%
       </p>
     </div>

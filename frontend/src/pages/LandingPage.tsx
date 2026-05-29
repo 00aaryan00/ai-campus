@@ -433,8 +433,10 @@ export default function LandingPage() {
         <div className={styles.footerTop}>
           <div className={styles.footerBrand}>
             <div className={styles.footerBrandLogo}>
+
+
               <img src={logo} alt="Logo" style={{ width: '36px', height: '36px', background: '#fff', borderRadius: '8px', padding: '2px', objectFit: 'contain' }} />
-              <span>AI Classroom</span>
+              <span className={styles.fontDisplay}>AI Classroom</span>
             </div>
             <p className={styles.footerBrandText}>
               Transform your classroom with AI-powered assessments, real-time analytics,

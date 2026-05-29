@@ -60,7 +60,14 @@ export default function TakeTest() {
   const [hasResumedAttempt, setHasResumedAttempt] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
 
+  // Security / Proctoring State
+  const [violationCount, setViolationCount] = useState(0);
+  const [showViolationOverlay, setShowViolationOverlay] = useState(false);
+  const [violationMessage, setViolationMessage] = useState("");
+  const MAX_VIOLATIONS = 3;
+
   // Refs/guards
+  const violationCountRef = useRef(0);
   const latestAnswersRef = useRef<Record<string, string>>({});
   const submittingRef = useRef(false); // blocks duplicate submits (manual or auto)
   const mountedRef = useRef(false);
@@ -122,6 +129,12 @@ export default function TakeTest() {
     setError("");
 
     try {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (err) {
+        console.warn("Fullscreen request failed", err);
+      }
+
       const response = await testApi.startTest(token, lobby._id, lobby.roomCode);
 
       setTestId(response.test._id);
@@ -226,6 +239,90 @@ export default function TakeTest() {
       if (mountedRef.current) setLoading(false);
     }
   }, [answers, questions, testId, token, hardResetStateAfterSubmit, navigate]);
+
+  const handleViolation = useCallback((reason: string) => {
+    if (submittingRef.current || questions.length === 0 || !testId) return;
+    
+    violationCountRef.current += 1;
+    const currentCount = violationCountRef.current;
+    
+    setViolationCount(currentCount);
+    setViolationMessage(reason);
+    
+    if (currentCount >= MAX_VIOLATIONS) {
+      setMessage(`Security violation limit exceeded (${MAX_VIOLATIONS}/${MAX_VIOLATIONS}). Auto-submitting test.`);
+      setShowViolationOverlay(false);
+      void submitExam();
+    } else {
+      setShowViolationOverlay(true);
+    }
+  }, [questions.length, testId, submitExam, MAX_VIOLATIONS]);
+
+  // Security / Proctoring Effects
+  useEffect(() => {
+    if (questions.length === 0 || !testId || submittingRef.current) return;
+
+    // Prevent default actions for copy, paste, context menu
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    const handleCopyPaste = (e: ClipboardEvent) => e.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent devtools, copy/paste shortcuts
+      if (
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "i")) ||
+        (e.ctrlKey && (e.key === "c" || e.key === "C" || e.key === "v" || e.key === "V" || e.key === "p" || e.key === "P")) ||
+        e.key === "Meta" ||
+        e.key === "PrintScreen"
+      ) {
+        e.preventDefault();
+      }
+    };
+    
+    // Prevent accidental reload
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    // Tracking visibility and fullscreen
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleViolation("Tab switched or minimized.");
+      }
+    };
+
+    const handleWindowBlur = () => {
+      handleViolation("Lost window focus.");
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        handleViolation("Exited fullscreen mode.");
+      }
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleCopyPaste);
+    document.addEventListener("cut", handleCopyPaste);
+    document.addEventListener("paste", handleCopyPaste);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopyPaste);
+      document.removeEventListener("cut", handleCopyPaste);
+      document.removeEventListener("paste", handleCopyPaste);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [questions.length, testId, handleViolation]);
 
   useEffect(() => {
     if (initialCode) setRoomCode(initialCode);
@@ -364,7 +461,42 @@ export default function TakeTest() {
   // 1) ACTIVE TEST VIEW
   if (questions.length > 0 && currentQuestionData) {
     return (
-      <div className="min-h-screen w-full bg-[#160028] text-white">
+      <div className="min-h-screen w-full bg-[#160028] text-white select-none">
+        
+        {/* Security Violation Overlay */}
+        {showViolationOverlay && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6 backdrop-blur-sm">
+            <div className="max-w-md rounded-3xl border border-red-500/50 bg-red-950 p-8 text-center shadow-2xl shadow-red-900/50">
+              <h2 className="mb-4 text-3xl font-black text-red-500">Security Violation</h2>
+              <p className="mb-6 text-lg font-medium text-red-200">
+                {violationMessage}
+              </p>
+              <div className="mb-8 flex justify-center gap-2">
+                {[...Array(MAX_VIOLATIONS)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-3 w-12 rounded-full ${
+                      i < violationCount ? "bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]" : "bg-red-900/50"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="mb-8 font-bold text-red-300">
+                Warning {violationCount} of {MAX_VIOLATIONS}. If you reach {MAX_VIOLATIONS} violations, your test will be automatically submitted and flagged.
+              </p>
+              <button
+                onClick={() => {
+                  setShowViolationOverlay(false);
+                  document.documentElement.requestFullscreen().catch(() => {});
+                }}
+                className="w-full rounded-xl bg-red-600 px-6 py-4 font-bold text-white shadow-[0_4px_20px_rgba(220,38,38,0.4)] transition hover:bg-red-500 hover:shadow-[0_4px_25px_rgba(220,38,38,0.6)]"
+              >
+                I Understand, Return to Test
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-rows-[auto_1fr] min-h-screen">
           {/* HEADER */}
           <div className="px-6 py-4 border-b border-purple-700 bg-[#1b0730]">
