@@ -10,6 +10,7 @@ import {
   updateLeaveStatus,
 } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
+import { useAuth } from "../context/AuthContext";
 
 type HODData = {
   name: string;
@@ -77,6 +78,7 @@ const SectionHeader = ({
 );
 
 export default function HODDashboard() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<HODData | null>(null);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -148,7 +150,8 @@ export default function HODDashboard() {
     );
   }
 
-  const displayName = data.name.toLowerCase().includes("dashboard") ? "Dr. Sharma" : data.name;
+  const displayName = user?.name?.trim() || data.name;
+  const hodMeta = user?.department?.trim()?.toUpperCase() || user?.email?.trim() || "HOD";
 
   return (
     <MainLayout>
@@ -158,7 +161,7 @@ export default function HODDashboard() {
         </h1>
 
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-          Welcome HOD {displayName} 👋
+          Welcome HOD {displayName} 👋 | {hodMeta}
         </p>
       </div>
 

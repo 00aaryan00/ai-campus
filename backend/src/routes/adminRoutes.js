@@ -1,7 +1,6 @@
 const express = require("express");
 
 const {
-  setTenantAuthMode,
   uploadRoster,
   listRoster,
   updateRosterEntry,
@@ -17,7 +16,6 @@ const router = express.Router();
 router.use(protect);
 router.use(authorizeRoles("institution_admin"));
 
-router.patch("/auth-mode", setTenantAuthMode);
 router.post("/roster/upload", uploadRoster);
 router.get("/roster", listRoster);
 router.patch("/roster/:id", updateRosterEntry);

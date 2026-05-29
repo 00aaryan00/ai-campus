@@ -8,6 +8,7 @@ import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
 import { listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
+import { useAuth } from "../context/AuthContext";
 
 type PrincipalData = {
   name: string;
@@ -51,6 +52,7 @@ const SectionHeader = ({
 );
 
 export default function PrincipalDashboard() {
+  const { user } = useAuth();
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<PrincipalData | null>(null);
@@ -114,6 +116,9 @@ export default function PrincipalDashboard() {
     (leave) => leave.status === "Rejected"
   ).length;
 
+  const displayName = user?.name?.trim() || data.name;
+  const adminMeta = user?.department?.trim()?.toUpperCase() || user?.email?.trim() || "Institution Admin";
+
   return (
     <MainLayout>
       {/* Welcome Banner */}
@@ -123,7 +128,7 @@ export default function PrincipalDashboard() {
         </h1>
 
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-          Welcome back, {data.name} 👋
+          Welcome back, {displayName} 👋 | {adminMeta}
         </p>
         {tenantSlug ? (
           <Link

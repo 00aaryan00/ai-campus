@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { platformApi } from "../services/api";
 
@@ -17,8 +17,27 @@ export default function PlatformCreateInstitution() {
     adminPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    const verify = async () => {
+      if (!token) {
+        navigate("/platform/login");
+        return;
+      }
+      try {
+        await platformApi.me(token);
+      } catch {
+        localStorage.removeItem(PLATFORM_TOKEN_KEY);
+        navigate("/platform/login");
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+    verify();
+  }, [navigate, token]);
 
   const set = (key: keyof typeof form, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
@@ -48,6 +67,10 @@ export default function PlatformCreateInstitution() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return <div className="min-h-screen grid place-items-center bg-[#0b1020] text-slate-200">Checking session...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#0b1020] p-4 text-slate-100">

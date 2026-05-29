@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams} from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import Charts from "../components/Charts";
 import DayStatusCard, {
@@ -10,6 +10,8 @@ import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
 import { applyLeave, listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
+import { useAuth } from "../context/AuthContext";
+import { resultApi } from "../services/api";
 
 type StudentData = {
   name: string;
@@ -64,11 +66,6 @@ const timetable: Record<string, { subject: string; teacher: string; room: string
   ],
 };
 
-const examsToday = [
-  { subject: "Mathematics Quiz", time: "2:00 PM", status: "Available" },
-  { subject: "Physics MCQ Test", time: "4:00 PM", status: "Upcoming" },
-];
-
 const cardClass =
   "card-hover rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl transition dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white";
 
@@ -98,9 +95,10 @@ const SectionHeader = ({
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
-  const location = useLocation();
+  
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
-  const [activeTab, setActiveTab] = useState<TabType>(((location.state as any)?.tab as TabType) || "dashboard");
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<StudentData | null>(null);
 
   const [leaveReason, setLeaveReason] = useState("");
@@ -116,6 +114,17 @@ export default function StudentDashboard() {
 
   const [enteredExamCode, setEnteredExamCode] = useState("");
   const [examJoinMessage, setExamJoinMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
+  const [recentAttempts, setRecentAttempts] = useState<
+    Array<{
+      _id: string;
+      score: number;
+      totalMarks: number;
+      accuracy: number;
+      assignedSet?: string;
+      submittedAt: string;
+      testId?: { title?: string; subject?: string };
+    }>
+  >([]);
 
   const todaySchedule = dayStatus.isWorkingDay
     ? timetable[dayStatus.dayName] || []
@@ -161,6 +170,21 @@ export default function StudentDashboard() {
       practiceQuestions: 15,
     });
   }, []);
+
+  useEffect(() => {
+    const loadRecentAttempts = async () => {
+      if (!user?.id) return;
+      try {
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) return;
+        const response = await resultApi.myResults(authToken, tenantSlug);
+        setRecentAttempts(response.results || []);
+      } catch {
+        setRecentAttempts([]);
+      }
+    };
+    loadRecentAttempts();
+  }, [tenantSlug, user?.id]);
 
   useEffect(() => {
     if (!data?.name) return;
@@ -229,7 +253,12 @@ export default function StudentDashboard() {
     return null;
   }
 
-  const displayName = data.name.toLowerCase().includes("dashboard") ? "Aarav Sharma" : data.name;
+  const displayName = user?.name?.trim() || data.name;
+  const studentMeta =
+    user?.enrollmentNumber?.trim() ||
+    user?.department?.trim()?.toUpperCase() ||
+    user?.email?.trim() ||
+    "Student";
 
   return (
     <MainLayout>
@@ -239,7 +268,7 @@ export default function StudentDashboard() {
         </h1>
 
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-          Welcome Student {displayName} 👋 | Class 10-A
+          Welcome Student {displayName} 👋 | {studentMeta}
         </p>
       </div>
 
@@ -276,7 +305,7 @@ export default function StudentDashboard() {
                 Exams Today 📝
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
-                {dayStatus.isWorkingDay ? examsToday.length : 0}
+                {dayStatus.isWorkingDay ? recentAttempts.length : 0}
               </h2>
             </div>
 
@@ -551,29 +580,32 @@ export default function StudentDashboard() {
             </div>
 
             <h2 className="mb-4 text-xl font-black text-accent-blue">
-              Scheduled Attempts
+              Last Attempted Exams
             </h2>
 
-            {dayStatus.isWorkingDay ? (
+            {recentAttempts.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
-                {examsToday.map((exam, index) => (
-                  <div key={index} className={innerCardClass}>
+                {recentAttempts.slice(0, 6).map((attempt) => (
+                  <div key={attempt._id} className={innerCardClass}>
                     <h3 className="font-black text-slate-900 dark:text-white">
-                      {exam.subject}
+                      {attempt.testId?.title || "Exam"}
                     </h3>
                     <p className="text-slate-500 dark:text-slate-400">
-                      {exam.time}
+                      {new Date(attempt.submittedAt).toLocaleString()}
                     </p>
-
-                    <button className={`mt-3 ${buttonClass}`}>
-                      {exam.status === "Available" ? "Attempt Now" : "Upcoming"}
-                    </button>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Score: <b>{attempt.score}</b> / {attempt.totalMarks} | Accuracy:{" "}
+                      <b>{Math.round(attempt.accuracy)}%</b>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Set Type: <b className="uppercase">{attempt.assignedSet || "-"}</b>
+                    </p>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-slate-500 dark:text-slate-400">
-                No exams available on leave day.
+                No attempts found yet.
               </p>
             )}
           </div>

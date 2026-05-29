@@ -36,7 +36,11 @@ export default function Login() {
 
   useEffect(() => {
     const init = async () => {
-      if (!tenantSlug) return;
+      if (!tenantSlug) {
+        setError("Institution slug is missing. Please select institution again.");
+        setPageLoading(false);
+        return;
+      }
       setPageLoading(true);
       setError("");
       try {
