@@ -1,6 +1,6 @@
 import studentImage from "../assets/student.png";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 
 import MainLayout from "../layout/MainLayout";
 import { useAuth } from "../context/AuthContext";
@@ -206,8 +206,16 @@ export default function TakeTest() {
       // Clean up local drafts safely
       hardResetStateAfterSubmit(response.message || "Submitted.");
 
-      // Use React Router navigate instead of hard window replace
-      navigate("/student/dashboard");
+      if (response.result) {
+        setSummary({
+          score: response.result.score,
+          totalMarks: response.result.totalMarks,
+          accuracy: response.result.accuracy,
+        });
+      } else {
+        // Fallback in case result isn't fully formed
+        navigate("/student/dashboard");
+      }
     } catch (e) {
       if (!mountedRef.current) return;
       setError(e instanceof Error ? e.message : "Failed to submit exam");

@@ -49,7 +49,7 @@ const roleTabs = {
 export default function MainLayout({ children }: MainLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState((location.state as any)?.tab || "dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { logout } = useAuth();
 
@@ -74,6 +74,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
     window.dispatchEvent(
       new CustomEvent(`${role}TabChange`, { detail: tabId })
     );
+
+    const parts = location.pathname.split("/").filter(Boolean);
+    const tenantSlug = parts[0] === "t" ? parts[1] : null;
+
+    if (tenantSlug) {
+      if (role === "student" && !location.pathname.match(/\/student\/?$/)) {
+        navigate(`/t/${tenantSlug}/student`, { state: { tab: tabId } });
+      } else if (role === "faculty" && !location.pathname.match(/\/faculty\/?$/)) {
+        navigate(`/t/${tenantSlug}/faculty`, { state: { tab: tabId } });
+      } else if (role === "hod" && !location.pathname.match(/\/hod\/?$/)) {
+        navigate(`/t/${tenantSlug}/hod`, { state: { tab: tabId } });
+      } else if (role === "principal" && !location.pathname.match(/\/admin\/?$/)) {
+        navigate(`/t/${tenantSlug}/admin`, { state: { tab: tabId } });
+      }
+    }
   };
 
   return (
