@@ -100,16 +100,27 @@ const SectionHeader = ({
 );
 
 export default function TeacherDashboard() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<TeacherData | null>(null);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   
   const [examType, setExamType] = useState<"" | "common" | "adaptive">("");
   const [commonDifficulty, setCommonDifficulty] = useState<"" | "easy" | "medium" | "hard">("");
+  const [commonQuestionCount, setCommonQuestionCount] = useState(15);
+  const [commonTotalMarks, setCommonTotalMarks] = useState(30);
+  const [adaptiveQuestionCount, setAdaptiveQuestionCount] = useState(10);
+  const [adaptiveTotalMarks, setAdaptiveTotalMarks] = useState(20);
   const [generatedExamCode, setGeneratedExamCode] = useState<string | null>(null);
   const [examTitle, setExamTitle] = useState("");
   const [examSubject, setExamSubject] = useState("Computer Science");
+  const [recommendedSubjects, setRecommendedSubjects] = useState([
+    "Mathematics",
+    "AI Basics",
+    "Computer Science",
+    "Physics",
+    "Chemistry"
+  ]);
   const [examDuration, setExamDuration] = useState(30);
   const [examInstructions, setExamInstructions] = useState("");
   const [createError, setCreateError] = useState("");
@@ -183,6 +194,22 @@ export default function TeacherDashboard() {
     });
   };
 
+  const applySetTargets = (
+    questions: QuestionPayload[],
+    targetCount: number,
+    totalMarks: number
+  ) => {
+    const safeCount = Math.max(1, targetCount);
+    const safeTotal = Math.max(1, totalMarks);
+    const trimmed = questions.slice(0, safeCount);
+    const baseMarks = Math.floor(safeTotal / safeCount);
+    const extra = safeTotal % safeCount;
+    return trimmed.map((question, index) => ({
+      ...question,
+      marks: baseMarks + (index < extra ? 1 : 0),
+    }));
+  };
+
   const handleCreateExam = async () => {
     if (!token) {
       setCreateError("Please login again as faculty.");
@@ -206,11 +233,29 @@ export default function TeacherDashboard() {
 
     const isCommonMode = examType === "common";
     const sets = isCommonMode
-      ? { common: generatedQuestionSets.common || [] }
+      ? {
+          common: applySetTargets(
+            generatedQuestionSets.common || [],
+            commonQuestionCount,
+            commonTotalMarks
+          ),
+        }
       : {
-          easy: generatedQuestionSets.easy || [],
-          medium: generatedQuestionSets.medium || [],
-          hard: generatedQuestionSets.hard || [],
+          easy: applySetTargets(
+            generatedQuestionSets.easy || [],
+            adaptiveQuestionCount,
+            adaptiveTotalMarks
+          ),
+          medium: applySetTargets(
+            generatedQuestionSets.medium || [],
+            adaptiveQuestionCount,
+            adaptiveTotalMarks
+          ),
+          hard: applySetTargets(
+            generatedQuestionSets.hard || [],
+            adaptiveQuestionCount,
+            adaptiveTotalMarks
+          ),
         };
 
     if (isCommonMode && (!sets.common || sets.common.length === 0)) {
@@ -227,6 +272,21 @@ export default function TeacherDashboard() {
       ((sets.easy || []).length === 0 || (sets.medium || []).length === 0 || (sets.hard || []).length === 0)
     ) {
       setCreateError("Adaptive mode requires easy, medium, and hard question sets.");
+      return;
+    }
+
+    if (isCommonMode && (generatedQuestionSets.common || []).length < Math.max(1, commonQuestionCount)) {
+      setCreateError(`Need at least ${commonQuestionCount} generated common questions.`);
+      return;
+    }
+
+    if (
+      !isCommonMode &&
+      ((generatedQuestionSets.easy || []).length < Math.max(1, adaptiveQuestionCount) ||
+        (generatedQuestionSets.medium || []).length < Math.max(1, adaptiveQuestionCount) ||
+        (generatedQuestionSets.hard || []).length < Math.max(1, adaptiveQuestionCount))
+    ) {
+      setCreateError(`Need at least ${adaptiveQuestionCount} questions in each adaptive set.`);
       return;
     }
 
@@ -300,17 +360,52 @@ export default function TeacherDashboard() {
           source: question.source || "ai",
         }));
 
+      const generatedCommon = normalizeGenerated(
+        response.sets.common,
+        commonDifficulty || "medium"
+      );
+      const generatedEasy = normalizeGenerated(response.sets.easy, "easy");
+      const generatedMedium = normalizeGenerated(response.sets.medium, "medium");
+      const generatedHard = normalizeGenerated(response.sets.hard, "hard");
+
       setGeneratedQuestionSets({
-        common: normalizeGenerated(response.sets.common, commonDifficulty || "medium"),
-        easy: normalizeGenerated(response.sets.easy, "easy"),
-        medium: normalizeGenerated(response.sets.medium, "medium"),
-        hard: normalizeGenerated(response.sets.hard, "hard"),
+        common:
+          examType === "common"
+            ? applySetTargets(generatedCommon, commonQuestionCount, commonTotalMarks)
+            : generatedCommon,
+        easy:
+          examType === "adaptive"
+            ? applySetTargets(generatedEasy, adaptiveQuestionCount, adaptiveTotalMarks)
+            : generatedEasy,
+        medium:
+          examType === "adaptive"
+            ? applySetTargets(generatedMedium, adaptiveQuestionCount, adaptiveTotalMarks)
+            : generatedMedium,
+        hard:
+          examType === "adaptive"
+            ? applySetTargets(generatedHard, adaptiveQuestionCount, adaptiveTotalMarks)
+            : generatedHard,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate questions";
       setAiError(message);
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleTranscriptUpload = async (file: File | null) => {
+    if (!file) return;
+    const lower = file.name.toLowerCase();
+    try {
+      if (lower.endsWith(".txt")) {
+        const content = await file.text();
+        setTranscriptInput((prev) => (prev ? `${prev}\n\n${content}` : content));
+        return;
+      }
+      setAiError("Only .txt upload is supported in this demo build. Please paste PDF/DOCX text.");
+    } catch {
+      setAiError("Failed to read uploaded file.");
     }
   };
 
@@ -322,19 +417,22 @@ export default function TeacherDashboard() {
     );
   }
 
-  const displayName = data.name.toLowerCase().includes("dashboard") ? "Sarah Smith" : data.name;
+  const displayName = user?.name?.trim() || data.name;
+  const teacherMeta =
+    user?.department?.trim()?.toUpperCase() || user?.email?.trim() || "Faculty";
 
   return (
     <MainLayout>
-      <div className="mb-8">
-        <h1 className="text-4xl font-black text-slate-900 dark:text-white">
-          Teacher Dashboard
-        </h1>
- 
-        <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-          Welcome Teacher {displayName} 👋
-        </p>
-      </div>
+      {activeTab !== "exams" ? (
+        <div className="mb-8">
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white">
+            Teacher Dashboard
+          </h1>
+          <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
+            Welcome Teacher {displayName} 👋 | {teacherMeta}
+          </p>
+        </div>
+      ) : null}
 
       {activeTab === "dashboard" && (
         <>
@@ -556,255 +654,235 @@ export default function TeacherDashboard() {
 
       {activeTab === "exams" && (
         <>
-          <SectionHeader
-            title="Create Exam"
-            description="Create and schedule exams, tests and assessments for students."
-          />
+          <div className="mb-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 dark:bg-[#0C1330]">
+            Create Exam
+          </div>
 
-          <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-accent-blue">
-              Exam Details
-            </h2>
+          <div className="space-y-6">
+            <aside className="h-fit rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white">
+              <h2 className="mb-4 text-xl font-black text-accent-blue">Exam Setup</h2>
+              <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+                Fill details, generate questions, review quickly, then create assessment.
+              </p>
 
-            <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-              Backend-required fields: title, subject, duration (minutes), mode, instructions, and generated questions.
-            </p>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <input
-                type="text"
-                placeholder="Exam Title"
-                value={examTitle}
-                onChange={(e) => setExamTitle(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-
-              <select
-                value={examSubject}
-                onChange={(e) => setExamSubject(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              >
-                <option>Mathematics</option>
-                <option>AI Basics</option>
-                <option>Computer Science</option>
-              </select>
-
-              <input
-                type="number"
-                min={1}
-                value={examDuration}
-                onChange={(e) => setExamDuration(Number(e.target.value))}
-                placeholder="Duration in minutes"
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-
-              <div className="space-y-2">
-                
-                <select
-                  value={examType}
-                  onChange={(e) => setExamType(e.target.value as "" | "common" | "adaptive")}
-                  className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 font-semibold text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
-                >
-                  <option value="">Mode</option>
-                  <option value="common">Common (same test for everyone)</option>
-                  <option value="adaptive">Adaptive (based on previous performances)</option>
-                </select>
-              </div>
-
-              {examType === "common" && (
-                <select
-                  value={commonDifficulty}
-                  onChange={(e) => setCommonDifficulty(e.target.value as "" | "easy" | "medium" | "hard")}
-                  className="rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 font-semibold text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
-                >
-                  <option value="">Select Difficulty Level</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              )}
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-indigo-500/20 bg-indigo-50/50 p-6 dark:bg-indigo-950/20">
-              <h3 className="mb-2 text-lg font-black text-indigo-600 dark:text-indigo-400">
-                AI Question Generator ✨
-              </h3>
-              <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Provide a topic, paste your lecture notes, or upload a lecture transcript, and our Gemini AI will instantly generate the assessment.
-                </p>
-                <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl bg-indigo-100 px-4 py-2 text-sm font-bold text-indigo-700 transition hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-800/50">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                  Upload Transcript
-                  <input type="file" accept=".txt,.pdf,.docx" className="hidden" />
-                </label>
-              </div>
-
-              <textarea
-                placeholder="E.g., Photosynthesis, Newton's Laws, or paste your lecture notes here..."
-                rows={4}
-                value={transcriptInput}
-                onChange={(e) => setTranscriptInput(e.target.value)}
-                className="w-full resize-none rounded-xl border border-slate-300 bg-white p-4 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-              <textarea
-                placeholder="Exam instructions visible to students"
-                rows={3}
-                value={examInstructions}
-                onChange={(e) => setExamInstructions(e.target.value)}
-                className="mt-3 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-              {aiError && <p className="mt-3 text-sm font-semibold text-rose-500">{aiError}</p>}
-              <button
-                onClick={handleGenerateQuestions}
-                disabled={aiLoading}
-                className="mt-4 rounded-xl bg-indigo-600 px-5 py-2 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60"
-              >
-                {aiLoading ? "Generating..." : "Generate Questions with AI"}
-              </button>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button 
-                onClick={handleCreateExam}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:scale-105 hover:shadow-indigo-500/40"
-              >
-                Create Assessment
-              </button>
-            </div>
-            {createError && <p className="mt-3 text-sm font-semibold text-rose-500">{createError}</p>}
-
-            {generatedExamCode && (
-              <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 p-6 text-center dark:border-emerald-500/20 dark:bg-emerald-900/20 animate-fade-in">
-                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">Assessment Created Successfully!</p>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Share this unique code with your students to grant them access:</p>
-                <div className="mt-4 inline-block rounded-xl bg-white px-8 py-3 shadow-inner dark:bg-[#0C1330]">
-                  <p className="text-3xl font-black tracking-widest text-slate-900 dark:text-white">{generatedExamCode}</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Exam Title</label>
+                  <input
+                    type="text"
+                    aria-label="Exam title"
+                    placeholder="Enter exam title..."
+                    value={examTitle}
+                    onChange={(e) => setExamTitle(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                  />
                 </div>
-              </div>
-            )}
-
-            {generatedQuestionSets && (
-              <div className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-50/50 p-6 dark:bg-blue-950/20">
-                <h3 className="text-lg font-black text-blue-600 dark:text-blue-400">
-                  Generated Question Sets
-                </h3>
-                {generatedQuestionSets.common && (
-                  <div className="mt-4">
-                    <p className="mb-2 font-semibold">Common Set ({generatedQuestionSets.common.length})</p>
-                    <div className="space-y-3">
-                      {generatedQuestionSets.common.map((q, i) => {
-                        const questionKey = `common-${i}`;
-                        const isEditing = editingQuestionKey === questionKey;
-                        return (
-                          <div key={questionKey} className={inner}>
-                            <div className="mb-2 flex items-center justify-between">
-                              <p className="font-semibold">Q{i + 1}</p>
-                              <button
-                                type="button"
-                                onClick={() => setEditingQuestionKey(isEditing ? null : questionKey)}
-                                className="rounded-lg bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300"
-                              >
-                                {isEditing ? "Done" : "Edit"}
-                              </button>
-                            </div>
-                            {isEditing ? (
-                              <div className="space-y-2">
-                                <input
-                                  value={q.questionText}
-                                  onChange={(e) =>
-                                    updateQuestion("common", i, (prev) => ({
-                                      ...prev,
-                                      questionText: e.target.value,
-                                      source: "manual",
-                                    }))
-                                  }
-                                  className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                />
-                                <input
-                                  value={q.options.join(" | ")}
-                                  onChange={(e) =>
-                                    updateQuestion("common", i, (prev) => ({
-                                      ...prev,
-                                      options: e.target.value
-                                        .split("|")
-                                        .map((item) => item.trim())
-                                        .filter(Boolean),
-                                      source: "manual",
-                                    }))
-                                  }
-                                  className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                />
-                                <div className="grid gap-2 md:grid-cols-3">
-                                  <input
-                                    value={q.correctAnswer}
-                                    onChange={(e) =>
-                                      updateQuestion("common", i, (prev) => ({
-                                        ...prev,
-                                        correctAnswer: e.target.value,
-                                        source: "manual",
-                                      }))
-                                    }
-                                    className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                  />
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    value={q.marks}
-                                    onChange={(e) =>
-                                      updateQuestion("common", i, (prev) => ({
-                                        ...prev,
-                                        marks: Number(e.target.value) || 1,
-                                        source: "manual",
-                                      }))
-                                    }
-                                    className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                  />
-                                  <select
-                                    value={q.difficultyLevel}
-                                    onChange={(e) =>
-                                      updateQuestion("common", i, (prev) => ({
-                                        ...prev,
-                                        difficultyLevel: e.target.value as "easy" | "medium" | "hard",
-                                        source: "manual",
-                                      }))
-                                    }
-                                    className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                  >
-                                    <option value="easy">easy</option>
-                                    <option value="medium">medium</option>
-                                    <option value="hard">hard</option>
-                                  </select>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <p className="font-semibold">{q.questionText}</p>
-                                <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
-                                <p className="text-sm mt-1">
-                                  Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Subject</label>
+                  <input
+                    type="text"
+                    list="subject-suggestions"
+                    aria-label="Exam subject"
+                    placeholder="Select or type a subject..."
+                    value={examSubject}
+                    onChange={(e) => setExamSubject(e.target.value)}
+                    onBlur={() => {
+                      const trimmed = examSubject.trim();
+                      if (trimmed && !recommendedSubjects.includes(trimmed)) {
+                        setRecommendedSubjects((prev) => [...prev, trimmed]);
+                        setExamSubject(trimmed);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                  />
+                  <datalist id="subject-suggestions">
+                    {recommendedSubjects.map((sub) => (
+                      <option key={sub} value={sub} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Total Time (minutes)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    aria-label="Duration in minutes"
+                    value={examDuration}
+                    onChange={(e) => setExamDuration(Number(e.target.value))}
+                    placeholder="e.g., 30"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Exam Mode</label>
+                  <select
+                    aria-label="Exam mode"
+                    value={examType}
+                    onChange={(e) => setExamType(e.target.value as "" | "common" | "adaptive")}
+                    className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 font-semibold text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
+                  >
+                    <option value="">Select Mode</option>
+                    <option value="common">Common (same test for everyone)</option>
+                    <option value="adaptive">Adaptive (based on previous performances)</option>
+                  </select>
+                </div>
+                {examType === "common" && (
+                  <div className="space-y-4 rounded-xl border border-indigo-500/20 bg-indigo-50/50 p-4 dark:bg-indigo-950/20">
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-indigo-800 dark:text-indigo-300">Difficulty Level</label>
+                      <select
+                        aria-label="Common mode difficulty"
+                        value={commonDifficulty}
+                        onChange={(e) => setCommonDifficulty(e.target.value as "" | "easy" | "medium" | "hard")}
+                        className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 font-semibold text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
+                      >
+                        <option value="">Select Difficulty</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-indigo-800 dark:text-indigo-300">Total Questions</label>
+                        <input
+                          type="number"
+                          min={1}
+                          aria-label="Total questions in common set"
+                          value={commonQuestionCount}
+                          onChange={(e) => setCommonQuestionCount(Math.max(1, Number(e.target.value) || 1))}
+                          placeholder="e.g., 15"
+                          className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-indigo-800 dark:text-indigo-300">Total Marks</label>
+                        <input
+                          type="number"
+                          min={1}
+                          aria-label="Total marks in common set"
+                          value={commonTotalMarks}
+                          onChange={(e) => setCommonTotalMarks(Math.max(1, Number(e.target.value) || 1))}
+                          placeholder="e.g., 30"
+                          className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
+                {examType === "adaptive" && (
+                  <div className="space-y-4 rounded-xl border border-indigo-500/20 bg-indigo-50/50 p-4 dark:bg-indigo-950/20">
+                    <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                      Apply targets for all sets (easy, medium, hard)
+                    </p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-indigo-800 dark:text-indigo-300">Total Questions (per set)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          aria-label="Total questions in each adaptive set"
+                          value={adaptiveQuestionCount}
+                          onChange={(e) => setAdaptiveQuestionCount(Math.max(1, Number(e.target.value) || 1))}
+                          placeholder="e.g., 10"
+                          className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-semibold text-indigo-800 dark:text-indigo-300">Total Marks (per set)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          aria-label="Total marks in each adaptive set"
+                          value={adaptiveTotalMarks}
+                          onChange={(e) => setAdaptiveTotalMarks(Math.max(1, Number(e.target.value) || 1))}
+                          placeholder="e.g., 20"
+                          className="w-full rounded-xl border border-indigo-300 bg-indigo-50/30 p-3 text-indigo-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-indigo-500/30 dark:bg-indigo-950/20 dark:text-indigo-300"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                {(["easy", "medium", "hard"] as const).map((setName) =>
-                  generatedQuestionSets[setName] ? (
-                    <div className="mt-4" key={setName}>
-                      <p className="mb-2 font-semibold capitalize">
-                        {setName} Set ({generatedQuestionSets[setName]?.length || 0})
-                      </p>
-                      <div className="space-y-3">
-                        {generatedQuestionSets[setName]?.map((q, i) => {
-                          const questionKey = `${setName}-${i}`;
+                <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-50/50 p-4 dark:bg-indigo-950/20">
+                <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-300">AI Input</h3>
+                <label className="mt-2 flex cursor-pointer items-center gap-2 rounded-lg border border-indigo-300/40 bg-indigo-100/60 px-3 py-2 text-xs font-semibold text-indigo-800 transition dark:border-indigo-500/30 dark:bg-indigo-900/30 dark:text-indigo-300">
+                  Upload Transcript (.txt)
+                  <input
+                    type="file"
+                    accept=".txt,text/plain,.pdf,.docx"
+                    className="hidden"
+                    onChange={(e) => handleTranscriptUpload(e.target.files?.[0] || null)}
+                  />
+                </label>
+                <textarea
+                  aria-label="Lecture transcript or topic input"
+                  placeholder="Paste topic / lecture notes..."
+                  rows={5}
+                  value={transcriptInput}
+                  onChange={(e) => setTranscriptInput(e.target.value)}
+                  className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                />
+                <textarea
+                  aria-label="Exam instructions"
+                  placeholder="Exam instructions for students"
+                  rows={3}
+                  value={examInstructions}
+                  onChange={(e) => setExamInstructions(e.target.value)}
+                  className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                />
+                {aiError && <p className="mt-2 text-sm font-semibold text-rose-500">{aiError}</p>}
+                <button
+                  onClick={handleGenerateQuestions}
+                  disabled={aiLoading}
+                  className="mt-3 w-full rounded-xl bg-indigo-600 px-5 py-2 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  {aiLoading ? "Generating..." : "Generate Questions with AI"}
+                </button>
+              </div>
+
+              <button
+                onClick={handleCreateExam}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 font-bold text-white shadow-lg shadow-indigo-500/25 transition"
+              >
+                Create Assessment
+              </button>
+              {createError && <p className="mt-2 text-sm font-semibold text-rose-500">{createError}</p>}
+
+              {generatedExamCode && (
+                <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 p-4 text-center dark:border-emerald-500/20 dark:bg-emerald-900/20">
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Assessment Created</p>
+                  <p className="mt-2 text-2xl font-black tracking-widest text-slate-900 dark:text-white">{generatedExamCode}</p>
+                </div>
+              )}
+            </aside>
+
+            <section className="rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xl font-black text-blue-600 dark:text-blue-400">Generated Question Sets</h3>
+                {generatedQuestionSets ? (
+                  <span className="rounded-full border border-blue-500/20 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                    Editable
+                  </span>
+                ) : null}
+              </div>
+
+              {!generatedQuestionSets ? (
+                <p className="text-slate-500 dark:text-slate-400">
+                  Generate questions to preview and edit them here.
+                </p>
+              ) : (
+                <div className="max-h-[68vh] space-y-4 overflow-y-auto pr-1">
+                  {generatedQuestionSets.common ? (
+                    <details open className="rounded-xl border border-white/10 bg-slate-50/60 p-3 dark:bg-[#111B44]/60">
+                      <summary className="cursor-pointer font-semibold">Common Set ({generatedQuestionSets.common.length})</summary>
+                      <div className="mt-3 space-y-3">
+                        {generatedQuestionSets.common.map((q, i) => {
+                          const questionKey = `common-${i}`;
                           const isEditing = editingQuestionKey === questionKey;
                           return (
-                            <div key={questionKey} className={inner}>
+                            <div key={questionKey} className="mb-3 rounded-2xl border border-slate-200/40 bg-slate-50 p-4 text-slate-700 dark:border-blue-500/10 dark:bg-[#111B44] dark:text-white">
                               <div className="mb-2 flex items-center justify-between">
                                 <p className="font-semibold">Q{i + 1}</p>
                                 <button
@@ -817,91 +895,77 @@ export default function TeacherDashboard() {
                               </div>
                               {isEditing ? (
                                 <div className="space-y-2">
-                                  <input
-                                    value={q.questionText}
-                                    onChange={(e) =>
-                                      updateQuestion(setName, i, (prev) => ({
-                                        ...prev,
-                                        questionText: e.target.value,
-                                        source: "manual",
-                                      }))
-                                    }
-                                    className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                  />
-                                  <input
-                                    value={q.options.join(" | ")}
-                                    onChange={(e) =>
-                                      updateQuestion(setName, i, (prev) => ({
-                                        ...prev,
-                                        options: e.target.value
-                                          .split("|")
-                                          .map((item) => item.trim())
-                                          .filter(Boolean),
-                                        source: "manual",
-                                      }))
-                                    }
-                                    className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                  />
+                                  <input value={q.questionText} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, questionText: e.target.value, source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                  <input value={q.options.join(" | ")} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, options: e.target.value.split("|").map((item) => item.trim()).filter(Boolean), source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
                                   <div className="grid gap-2 md:grid-cols-3">
-                                    <input
-                                      value={q.correctAnswer}
-                                      onChange={(e) =>
-                                        updateQuestion(setName, i, (prev) => ({
-                                          ...prev,
-                                          correctAnswer: e.target.value,
-                                          source: "manual",
-                                        }))
-                                      }
-                                      className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                    />
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={q.marks}
-                                      onChange={(e) =>
-                                        updateQuestion(setName, i, (prev) => ({
-                                          ...prev,
-                                          marks: Number(e.target.value) || 1,
-                                          source: "manual",
-                                        }))
-                                      }
-                                      className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                    />
-                                    <select
-                                      value={q.difficultyLevel}
-                                      onChange={(e) =>
-                                        updateQuestion(setName, i, (prev) => ({
-                                          ...prev,
-                                          difficultyLevel: e.target.value as "easy" | "medium" | "hard",
-                                          source: "manual",
-                                        }))
-                                      }
-                                      className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
-                                    >
-                                      <option value="easy">easy</option>
-                                      <option value="medium">medium</option>
-                                      <option value="hard">hard</option>
-                                    </select>
+                                    <input value={q.correctAnswer} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, correctAnswer: e.target.value, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <input type="number" min={1} value={q.marks} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, marks: Number(e.target.value) || 1, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <select value={q.difficultyLevel} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, difficultyLevel: e.target.value as "easy" | "medium" | "hard", source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
                                   </div>
                                 </div>
                               ) : (
                                 <>
                                   <p className="font-semibold">{q.questionText}</p>
                                   <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
-                                  <p className="text-sm mt-1">
-                                    Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}
-                                  </p>
+                                  <p className="text-sm mt-1">Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}</p>
                                 </>
                               )}
                             </div>
                           );
                         })}
                       </div>
-                    </div>
-                  ) : null
-                )}
-              </div>
-            )}
+                    </details>
+                  ) : null}
+
+                  {(["easy", "medium", "hard"] as const).map((setName) =>
+                    generatedQuestionSets[setName] ? (
+                      <details key={setName} open className="rounded-xl border border-white/10 bg-slate-50/60 p-3 dark:bg-[#111B44]/60">
+                        <summary className="cursor-pointer font-semibold capitalize">
+                          {setName} Set ({generatedQuestionSets[setName]?.length || 0})
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          {generatedQuestionSets[setName]?.map((q, i) => {
+                            const questionKey = `${setName}-${i}`;
+                            const isEditing = editingQuestionKey === questionKey;
+                            return (
+                              <div key={questionKey} className="mb-3 rounded-2xl border border-slate-200/40 bg-slate-50 p-4 text-slate-700 dark:border-blue-500/10 dark:bg-[#111B44] dark:text-white">
+                                <div className="mb-2 flex items-center justify-between">
+                                  <p className="font-semibold">Q{i + 1}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingQuestionKey(isEditing ? null : questionKey)}
+                                    className="rounded-lg bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300"
+                                  >
+                                    {isEditing ? "Done" : "Edit"}
+                                  </button>
+                                </div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <input value={q.questionText} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, questionText: e.target.value, source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <input value={q.options.join(" | ")} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, options: e.target.value.split("|").map((item) => item.trim()).filter(Boolean), source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <div className="grid gap-2 md:grid-cols-3">
+                                      <input value={q.correctAnswer} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, correctAnswer: e.target.value, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                      <input type="number" min={1} value={q.marks} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, marks: Number(e.target.value) || 1, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                      <select value={q.difficultyLevel} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, difficultyLevel: e.target.value as "easy" | "medium" | "hard", source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="font-semibold">{q.questionText}</p>
+                                    <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
+                                    <p className="text-sm mt-1">Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}</p>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </details>
+                    ) : null
+                  )}
+                </div>
+              )}
+            </section>
           </div>
         </>
       )}
