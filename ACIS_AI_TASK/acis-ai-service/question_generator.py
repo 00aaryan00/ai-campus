@@ -26,6 +26,7 @@ async def _call_groq(prompt: str, user_content: str) -> Dict[str, Any]:
                 {"role": "user", "content": user_content},
             ],
             temperature=0.7,
+            max_tokens=8000,
             response_format={"type": "json_object"}
         )
         
@@ -55,39 +56,85 @@ def _validate_question(q: Dict[str, Any], index: int) -> MCQQuestion:
         marks=q["marks"]
     )
 
-async def generate_same_test(transcript: str) -> List[MCQQuestion]:
-    prompt = (
-        SYSTEM_PROMPT_BASE + 
-        " Generate exactly 15 MCQ questions from the transcript. "
-        "Return a JSON object with a key 'questions' containing the list of 15 questions."
-    )
+async def _generate_exact_questions(transcript: str, target_count: int, target_marks: int, extra_instructions: str = "") -> List[MCQQuestion]:
+    accumulated_questions = []
+    remaining_count = target_count
     
-    data = await _call_groq(prompt, f"Transcript: {transcript}")
-    questions_data = data.get("questions", [])
-    
-    if len(questions_data) < 15:
-         # Fallback/Retry logic if needed, but for now we'll just validate
-         pass
-         
-    return [_validate_question(q, i) for i, q in enumerate(questions_data[:15])]
+    last_error = None
+    for attempt in range(3):
+        if remaining_count <= 0:
+            break
+            
+        prompt = (
+            SYSTEM_PROMPT_BASE + 
+            f" {extra_instructions} "
+            f"\n\nCRITICAL INSTRUCTION: You MUST generate EXACTLY {remaining_count} MCQ questions from the transcript. "
+            f"Do NOT stop early. The system requires exactly {remaining_count} questions. "
+            f"Return a JSON object with a key 'questions' containing the list of EXACTLY {remaining_count} questions."
+        )
+        
+        try:
+            data = await _call_groq(prompt, f"Transcript: {transcript}")
+            q_data = data.get("questions", [])
+            
+            valid_qs = []
+            for i, q in enumerate(q_data):
+                try:
+                    valid_qs.append(_validate_question(q, len(accumulated_questions) + i))
+                except Exception:
+                    pass
+                    
+            accumulated_questions.extend(valid_qs)
+            remaining_count = target_count - len(accumulated_questions)
+        except Exception as e:
+            print(f"Error during Groq generation: {e}")
+            last_error = e
+            break
 
-async def generate_adaptive_test(transcript: str) -> Dict[str, List[MCQQuestion]]:
-    prompt = (
-        SYSTEM_PROMPT_BASE + 
-        " Generate 3 separate tests based on the transcript: Hard, Medium, and Easy. "
-        "Each test must have exactly 15 questions. "
-        "Return a JSON object with keys 'easy', 'medium', and 'hard', each containing a list of 15 questions."
-    )
+    if len(accumulated_questions) == 0 and last_error:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(last_error)}")
+
+    # Fallback: duplicate if still short after 3 attempts to guarantee length
+    if len(accumulated_questions) > 0 and len(accumulated_questions) < target_count:
+        idx = 0
+        while len(accumulated_questions) < target_count:
+            copied_q = accumulated_questions[idx % len(accumulated_questions)].copy()
+            accumulated_questions.append(copied_q)
+            idx += 1
+            
+    # Trim if exceeded
+    accumulated_questions = accumulated_questions[:target_count]
     
-    data = await _call_groq(prompt, f"Transcript: {transcript}")
+    # Natively allocate exact marks
+    if target_count > 0:
+        base_marks = target_marks // target_count
+        marks_remainder = target_marks % target_count
+        
+        for i, q in enumerate(accumulated_questions):
+            q.marks = base_marks + (1 if i < marks_remainder else 0)
+
+    return accumulated_questions
+
+async def generate_same_test(transcript: str, total_questions: int = 15, total_marks: int = 15, difficulty: str = None) -> List[MCQQuestion]:
+    extra_instructions = ""
+    if difficulty:
+        extra_instructions = f"The difficulty level for ALL questions in this set MUST be '{difficulty}'."
+    return await _generate_exact_questions(transcript, total_questions, total_marks, extra_instructions)
+
+async def generate_adaptive_test(transcript: str, total_questions: int = 15, total_marks: int = 15) -> Dict[str, List[MCQQuestion]]:
+    import asyncio
     
-    result = {
-        "easy": [_validate_question(q, i) for i, q in enumerate(data.get("easy", [])[:15])],
-        "medium": [_validate_question(q, i) for i, q in enumerate(data.get("medium", [])[:15])],
-        "hard": [_validate_question(q, i) for i, q in enumerate(data.get("hard", [])[:15])]
+    easy_task = _generate_exact_questions(transcript, total_questions, total_marks, "The difficulty level for ALL questions in this set MUST be 'easy'.")
+    medium_task = _generate_exact_questions(transcript, total_questions, total_marks, "The difficulty level for ALL questions in this set MUST be 'medium'.")
+    hard_task = _generate_exact_questions(transcript, total_questions, total_marks, "The difficulty level for ALL questions in this set MUST be 'hard'.")
+    
+    easy_qs, medium_qs, hard_qs = await asyncio.gather(easy_task, medium_task, hard_task)
+    
+    return {
+        "easy": easy_qs,
+        "medium": medium_qs,
+        "hard": hard_qs
     }
-    
-    return result
 
 # Legacy function for compatibility if needed
 async def generate_questions(topic: str, difficulty: str, num_questions: int) -> List[MCQQuestion]:

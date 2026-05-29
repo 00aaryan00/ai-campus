@@ -702,7 +702,7 @@ const buildNormalizedAiQuestion = (question, fallbackDifficulty = "medium") => {
 
 const generateQuestionsFromAI = async (req, res, next) => {
   try {
-    const { transcript, mode = "same" } = req.body;
+    const { transcript, mode = "same", totalQuestions = 15, totalMarks = 15, difficulty } = req.body;
 
     if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
       return res.status(400).json({
@@ -727,6 +727,9 @@ const generateQuestionsFromAI = async (req, res, next) => {
       },
       body: JSON.stringify({
         transcript,
+        total_questions: totalQuestions,
+        total_marks: totalMarks,
+        ...(difficulty && mode === "same" ? { difficulty } : {})
       }),
     });
 

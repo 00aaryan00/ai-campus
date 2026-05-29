@@ -4,6 +4,8 @@ import Charts from "../components/Charts";
 import DayStatusCard, {
   getCurrentDayStatus,
 } from "../components/DayStatusCard";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
@@ -99,6 +101,16 @@ const SectionHeader = ({
   </div>
 );
 
+const AI_TAGS = [
+  "Numericals",
+  "Theory",
+  "Calculative",
+  "Conceptual",
+  "Real-world Examples",
+  "Analytical",
+  "Code Snippets"
+];
+
 export default function TeacherDashboard() {
   const { token, user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -134,6 +146,7 @@ export default function TeacherDashboard() {
     hard?: QuestionPayload[];
   } | null>(null);
   const [editingQuestionKey, setEditingQuestionKey] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const day = getCurrentDayStatus();
   const [selectedDay, setSelectedDay] = useState(day.dayName);
@@ -202,8 +215,9 @@ export default function TeacherDashboard() {
     const safeCount = Math.max(1, targetCount);
     const safeTotal = Math.max(1, totalMarks);
     const trimmed = questions.slice(0, safeCount);
-    const baseMarks = Math.floor(safeTotal / safeCount);
-    const extra = safeTotal % safeCount;
+    const actualCount = Math.max(1, trimmed.length);
+    const baseMarks = Math.floor(safeTotal / actualCount);
+    const extra = safeTotal % actualCount;
     return trimmed.map((question, index) => ({
       ...question,
       marks: baseMarks + (index < extra ? 1 : 0),
@@ -234,28 +248,12 @@ export default function TeacherDashboard() {
     const isCommonMode = examType === "common";
     const sets = isCommonMode
       ? {
-          common: applySetTargets(
-            generatedQuestionSets.common || [],
-            commonQuestionCount,
-            commonTotalMarks
-          ),
+          common: generatedQuestionSets.common || [],
         }
       : {
-          easy: applySetTargets(
-            generatedQuestionSets.easy || [],
-            adaptiveQuestionCount,
-            adaptiveTotalMarks
-          ),
-          medium: applySetTargets(
-            generatedQuestionSets.medium || [],
-            adaptiveQuestionCount,
-            adaptiveTotalMarks
-          ),
-          hard: applySetTargets(
-            generatedQuestionSets.hard || [],
-            adaptiveQuestionCount,
-            adaptiveTotalMarks
-          ),
+          easy: generatedQuestionSets.easy || [],
+          medium: generatedQuestionSets.medium || [],
+          hard: generatedQuestionSets.hard || [],
         };
 
     if (isCommonMode && (!sets.common || sets.common.length === 0)) {
@@ -326,10 +324,17 @@ export default function TeacherDashboard() {
     setAiError("");
     setAiLoading(true);
 
+    const enrichedTranscript = selectedTags.length > 0
+      ? `${transcriptInput}\n\n[CRITICAL FOCUS: Ensure the generated questions strongly emphasize these aspects: ${selectedTags.join(", ")}]`
+      : transcriptInput;
+
     try {
       const response = await facultyAiApi.generateQuestions(token, {
-        transcript: transcriptInput,
+        transcript: enrichedTranscript,
         mode: examType === "common" ? "same" : "adaptive",
+        totalQuestions: examType === "common" ? commonQuestionCount : adaptiveQuestionCount,
+        totalMarks: examType === "common" ? commonTotalMarks : adaptiveTotalMarks,
+        difficulty: examType === "common" ? commonDifficulty : undefined,
       });
       const normalizeGenerated = (
         questions:
@@ -387,7 +392,15 @@ export default function TeacherDashboard() {
             : generatedHard,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to generate questions";
+      let message = error instanceof Error ? error.message : "Failed to generate questions";
+      const lowerMsg = message.toLowerCase();
+      
+      if (lowerMsg.includes("rate limit") || lowerMsg.includes("429") || lowerMsg.includes("too many requests")) {
+        message = "AI rate limit reached. Please wait a moment and try again.";
+      } else if (lowerMsg.includes("token limit") || lowerMsg.includes("context length") || lowerMsg.includes("maximum context length")) {
+        message = "The provided transcript is too large and exceeds the AI model's token limit. Please shorten the text and try again.";
+      }
+
       setAiError(message);
     } finally {
       setAiLoading(false);
@@ -824,6 +837,24 @@ export default function TeacherDashboard() {
                   onChange={(e) => setTranscriptInput(e.target.value)}
                   className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
                 />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {AI_TAGS.map((tag) => {
+                    const isSelected = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTags(prev => isSelected ? prev.filter(t => t !== tag) : [...prev, tag])}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          isSelected
+                            ? "border-indigo-500 bg-indigo-500 text-white dark:border-indigo-400 dark:bg-indigo-400 dark:text-navy-900 shadow-md shadow-indigo-500/20"
+                            : "border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-800/40"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
                 <textarea
                   aria-label="Exam instructions"
                   placeholder="Exam instructions for students"
@@ -905,8 +936,19 @@ export default function TeacherDashboard() {
                                 </div>
                               ) : (
                                 <>
-                                  <p className="font-semibold">{q.questionText}</p>
-                                  <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
+                                  <div className="font-semibold prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:my-2">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.questionText}</ReactMarkdown>
+                                  </div>
+                                  <div className="text-sm mt-2 space-y-1">
+                                    <p className="font-bold">Options:</p>
+                                    <ul className="list-disc list-inside ml-2">
+                                      {q.options.map((opt, oIdx) => (
+                                        <li key={oIdx} className="prose prose-sm dark:prose-invert prose-p:inline prose-pre:inline">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{opt}</ReactMarkdown>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
                                   <p className="text-sm mt-1">Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}</p>
                                 </>
                               )}
@@ -951,8 +993,19 @@ export default function TeacherDashboard() {
                                   </div>
                                 ) : (
                                   <>
-                                    <p className="font-semibold">{q.questionText}</p>
-                                    <p className="text-sm mt-1">Options: {q.options.join(" | ")}</p>
+                                    <div className="font-semibold prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:my-2">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{q.questionText}</ReactMarkdown>
+                                    </div>
+                                    <div className="text-sm mt-2 space-y-1">
+                                      <p className="font-bold">Options:</p>
+                                      <ul className="list-disc list-inside ml-2">
+                                        {q.options.map((opt, oIdx) => (
+                                          <li key={oIdx} className="prose prose-sm dark:prose-invert prose-p:inline prose-pre:inline">
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{opt}</ReactMarkdown>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
                                     <p className="text-sm mt-1">Answer: {q.correctAnswer} | Marks: {q.marks} | Tag: {q.difficultyLevel} | Source: {q.source}</p>
                                   </>
                                 )}

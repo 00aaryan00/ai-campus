@@ -5,6 +5,8 @@ import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import { useAuth } from "../context/AuthContext";
 import { resultApi, testApi } from "../services/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type LobbyTest = {
   _id: string;
@@ -435,9 +437,9 @@ export default function TakeTest() {
                   </span>
                 </div>
 
-                <p className="text-lg md:text-xl leading-8 text-gray-200 mb-6">
-                  {currentQuestionData.questionText}
-                </p>
+                <div className="prose prose-invert prose-lg md:prose-xl max-w-none text-gray-200 mb-6 font-medium leading-8">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestionData.questionText}</ReactMarkdown>
+                </div>
 
                 <div className="space-y-4">
                   {currentQuestionData.options.map((option) => (
@@ -457,7 +459,9 @@ export default function TakeTest() {
                           }))
                         }
                       />
-                      <span className="text-lg">{option}</span>
+                      <span className="text-lg prose prose-invert prose-p:my-0 prose-pre:my-0 max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{option}</ReactMarkdown>
+                      </span>
                     </label>
                   ))}
                 </div>

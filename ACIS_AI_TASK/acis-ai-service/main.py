@@ -60,7 +60,12 @@ async def generate_same_test_endpoint(request: TranscriptRequest) -> SameTestRes
     if not request.transcript.strip():
         raise HTTPException(status_code=400, detail="Transcript cannot be empty")
     
-    questions = await generate_same_test(request.transcript)
+    questions = await generate_same_test(
+        transcript=request.transcript,
+        total_questions=request.total_questions,
+        total_marks=request.total_marks,
+        difficulty=request.difficulty
+    )
     return SameTestResponse(questions=questions)
 
 
@@ -72,7 +77,7 @@ async def generate_rankwise_test_endpoint(request: TranscriptRequest) -> Adaptiv
     if not request.transcript.strip():
         raise HTTPException(status_code=400, detail="Transcript cannot be empty")
     
-    tests = await generate_adaptive_test(request.transcript)
+    tests = await generate_adaptive_test(request.transcript, request.total_questions, request.total_marks)
     return AdaptiveTestResponse(
         easy=tests["easy"],
         medium=tests["medium"],

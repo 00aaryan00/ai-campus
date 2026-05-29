@@ -263,6 +263,9 @@ export const facultyAiApi = {
     payload: {
       transcript: string;
       mode: "same" | "adaptive";
+      totalQuestions?: number;
+      totalMarks?: number;
+      difficulty?: string;
     },
     tenantSlug?: string
   ) =>

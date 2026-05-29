@@ -21,6 +21,9 @@ class MCQQuestion(BaseModel):
 
 class TranscriptRequest(BaseModel):
     transcript: str
+    total_questions: int = 15
+    total_marks: int = 15
+    difficulty: str = None
 
 
 class SameTestResponse(BaseModel):
