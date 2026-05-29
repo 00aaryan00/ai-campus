@@ -21,7 +21,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/tenant-access" element={<TenantEntry />} />
-
+        <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/t/:tenantSlug/login" element={<Login />} />
         <Route path="/t/:tenantSlug/signup" element={<Signup />} />
         <Route path="/platform/login" element={<PlatformLogin />} />
