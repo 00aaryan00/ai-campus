@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/logo.png";
+
 
 type MainLayoutProps = {
   children: ReactNode;
@@ -99,7 +101,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <div>
             {/* Logo */}
             <div className="mb-10 flex items-center gap-3">
-              <img src="/logo.jpg" alt="Logo" className="h-14 w-14 bg-white rounded-lg p-0.5 object-contain" />
+              <img src={logo} alt="Logo" className="h-14 w-14 bg-white rounded-lg p-0.5 object-contain" />
               <div>
                 <h1 className="font-display text-2xl font-black">
                   <span className="text-gold-600 dark:text-[#6366f1]">AI</span>

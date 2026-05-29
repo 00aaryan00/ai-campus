@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import ThemeToggle from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import { authApi } from "../services/api";
+import logo from "../assets/logo.png";
 
 type TenantInfo = {
   id: string;
@@ -88,7 +89,28 @@ export default function Login() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#172554,#0b1020_45%,#030712)] text-slate-100 p-4 md:p-8">
       <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-5 py-3">
         <Link to="/" className="flex items-center gap-2 text-slate-100">
-          <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
+          {/* <img src={logo} alt="Logo" className="h-12 w-12 object-contain" /> */}
+
+          <div className="flex items-center gap-3">
+  {/* <img
+    src={logo}
+    alt="AI Classroom"
+    className="w-20 h-20 object-contain"
+  /> */}
+
+  <img
+  src={logo}
+  alt="AI Classroom Logo"
+  style={{
+    width: '36px',
+    height: '36px',
+    background: '#fff',
+    borderRadius: '8px',
+    padding: '2px',
+    objectFit: 'cover'
+  }}
+/>
+</div>
           <span className="font-semibold">AI Classroom</span>
         </Link>
         <div className="flex items-center gap-2">

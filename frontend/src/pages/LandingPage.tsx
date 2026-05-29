@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 
 import styles from './Landing.module.css';
+import logo from "../assets/logo.png";
 
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
@@ -128,7 +129,26 @@ export default function LandingPage() {
       {/* ── Nav ── */}
       <nav className={`${styles.nav} ${scrolled ? styles.navScrolled : ''}`}>
         <div className={styles.navLogo}>
-          <img src="/logo.jpg" alt="Logo" className={styles.navLogoIcon} style={{ width: '32px', height: '32px', background: '#fff', borderRadius: '6px', padding: '2px', objectFit: 'contain' }} />
+          {/* <img src="/logo.jpg" alt="Logo" className={styles.navLogoIcon} style={{ width: '32px', height: '32px', background: '#fff', borderRadius: '6px', padding: '2px', objectFit: 'contain' }} /> */}
+          {/* <img src={logo} alt="Logo" /> */}
+
+          <div className="flex items-center gap-3">
+
+            <img
+  src={logo}
+  alt="AI Classroom Logo"
+  style={{
+    width: '36px',
+    height: '36px',
+    background: '#fff',
+    borderRadius: '8px',
+    padding: '2px',
+    objectFit: 'cover'
+  }}
+/>
+  <h1 className="text-2xl font-bold text-blue-400">
+  </h1>
+</div>
           <span className={styles.navLogoText}>AI Classroom</span>
         </div>
         <div className={styles.navLinks}>
@@ -352,7 +372,20 @@ export default function LandingPage() {
               <div className={styles.orbitIcon} style={{ '--i': 5 } as React.CSSProperties}>⏱️</div>
             </div>
             <div className={styles.orbitCenter}>
-              <img src="/logo.jpg" alt="Logo" style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'contain' }} />
+              {/* <img src={logo} alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'contain' }} /> */}
+
+              <img
+  src={logo}
+  alt="AI Classroom Logo"
+  style={{
+    width: '36px',
+    height: '36px',
+    background: '#fff',
+    borderRadius: '8px',
+    padding: '2px',
+    objectFit: 'cover'
+  }}
+/>
             </div>
           </div>
           <div className={`${styles.workflowContent} ${styles.reveal}`}>
@@ -400,7 +433,7 @@ export default function LandingPage() {
         <div className={styles.footerTop}>
           <div className={styles.footerBrand}>
             <div className={styles.footerBrandLogo}>
-              <img src="/logo.jpg" alt="Logo" style={{ width: '36px', height: '36px', background: '#fff', borderRadius: '8px', padding: '2px', objectFit: 'contain' }} />
+              <img src={logo} alt="Logo" style={{ width: '36px', height: '36px', background: '#fff', borderRadius: '8px', padding: '2px', objectFit: 'contain' }} />
               <span>AI Classroom</span>
             </div>
             <p className={styles.footerBrandText}>

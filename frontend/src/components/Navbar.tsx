@@ -2,6 +2,7 @@ import { Bell, User, Menu } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
+
 interface NavbarProps {
   setSidebarOpen: (value: boolean) => void;
 }

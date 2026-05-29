@@ -15,6 +15,7 @@ import PrincipalDashboard from "./pages/PrincipalDashboard";
 import TakeTest from "./pages/TakeTest";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+
 export default function App() {
   return (
     <BrowserRouter>
