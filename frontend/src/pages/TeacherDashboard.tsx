@@ -60,7 +60,7 @@ const timetable: Record<string, { time: string; subject: string; class: string; 
     { time: "11:30 AM", subject: "AI Basics", class: "Class 9-B", type: "Lab", room: "116" }
   ],
   Tuesday: [
-    { time: "10:00 AM", subject: "Computer Science", class: "Class 8-A", type: "Theory", room: "506" }
+    { time: "10:00 AM", subject: "Operating Systems", class: "Class 8-A", type: "Theory", room: "506" }
   ],
   Wednesday: [
     { time: "9:00 AM", subject: "Mathematics Revision", class: "Class 10-A", type: "Theory", room: "229" },
@@ -125,11 +125,11 @@ export default function TeacherDashboard() {
   const [adaptiveTotalMarks, setAdaptiveTotalMarks] = useState(20);
   const [generatedExamCode, setGeneratedExamCode] = useState<string | null>(null);
   const [examTitle, setExamTitle] = useState("");
-  const [examSubject, setExamSubject] = useState("Computer Science");
+  const [examSubject, setExamSubject] = useState("");
   const [recommendedSubjects, setRecommendedSubjects] = useState([
     "Mathematics",
     "AI Basics",
-    "Computer Science",
+    "Operating Systems",
     "Physics",
     "Chemistry"
   ]);
@@ -631,7 +631,7 @@ export default function TeacherDashboard() {
                 <option>Select Subject</option>
                 <option>Mathematics</option>
                 <option>AI Basics</option>
-                <option>Computer Science</option>
+                <option>Operating Systems</option>
               </select>
 
               <input
@@ -697,7 +697,7 @@ export default function TeacherDashboard() {
                     type="text"
                     list="subject-suggestions"
                     aria-label="Exam subject"
-                    placeholder="Select or type a subject..."
+                    placeholder="e.g. Operating Systems / Thermodynamics / Data Structures"
                     value={examSubject}
                     onChange={(e) => setExamSubject(e.target.value)}
                     onBlur={() => {
