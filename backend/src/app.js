@@ -7,6 +7,7 @@ const platformRoutes = require("./routes/platformRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const resultRoutes = require("./routes/resultRoutes");
 const testRoutes = require("./routes/testRoutes");
+const timetableRoutes = require("./routes/timetableRoutes");
 const { createRedisConnection } = require("./config/redis");
 const {
   WORKER_HEARTBEAT_KEY,
@@ -133,6 +134,7 @@ tenantApiRouter.use("/auth", authRoutes);
 tenantApiRouter.use("/admin", adminRoutes);
 tenantApiRouter.use("/tests", testRoutes);
 tenantApiRouter.use("/results", resultRoutes);
+tenantApiRouter.use("/timetable", timetableRoutes);
 
 app.use("/api/t/:tenantSlug", tenantApiRouter);
 

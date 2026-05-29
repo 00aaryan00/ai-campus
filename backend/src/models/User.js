@@ -56,6 +56,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    semester: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   {
     timestamps: true,
@@ -88,6 +93,7 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     enrollmentNumber: this.enrollmentNumber,
     lastLoginAt: this.lastLoginAt,
     department: this.department,
+    semester: this.semester,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

@@ -9,6 +9,7 @@ import ProgressCard from "../components/ProgressCard";
 import { listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
+import TimetableUploader from "../components/TimetableUploader";
 
 type PrincipalData = {
   name: string;
@@ -22,7 +23,7 @@ type PrincipalData = {
   chartData: { name: string; value: number }[];
 };
 
-type TabType = "dashboard" | "leaves" | "alerts" | "performance" | "events" | "notifications";
+type TabType = "dashboard" | "leaves" | "timetable" | "alerts" | "performance" | "events" | "notifications";
 
 const smartAlerts = [
   "12 students are below 75% attendance",
@@ -244,6 +245,10 @@ export default function PrincipalDashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {activeTab === "timetable" && (
+        <TimetableUploader />
       )}
 
       {activeTab === "alerts" && (

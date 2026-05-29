@@ -310,9 +310,34 @@ const getCurrentUser = async (req, res, next) => {
   }
 };
 
+const updateSemester = async (req, res, next) => {
+  try {
+    const { semester } = req.body;
+    if (!semester) {
+      return res.status(400).json({ success: false, message: "Semester is required" });
+    }
+
+    if (req.user.role !== "student") {
+      return res.status(403).json({ success: false, message: "Only students can update semester" });
+    }
+
+    req.user.semester = semester;
+    await req.user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Semester updated successfully",
+      user: req.user.toSafeObject(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   signupRequest,
   loginUser,
   getCurrentUser,
+  updateSemester,
 };

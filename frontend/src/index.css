@@ -72,24 +72,13 @@ select option {
   color: #f4f5fa;
 }
 
-/* ================= CARD HOVER SYSTEM ================= */
+/* ================= CARD SYSTEM (Formally hover, now static for better UX) ================= */
 
 .card-hover {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.card-hover:hover {
-  transform: translateY(-2px) !important;
-  box-shadow:
-    0 10px 25px -5px rgba(0, 0, 0, 0.1),
-    0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-}
-
-.dark .card-hover:hover {
-  box-shadow:
-    0 10px 25px -5px rgba(0, 0, 0, 0.3),
-    0 8px 10px -6px rgba(0, 0, 0, 0.3) !important;
-}
+/* Removed hover effects from non-actionable cards per user request for better UX */
 
 /* ================= PAGE ANIMATION ================= */
 
@@ -355,8 +344,6 @@ form:hover {
 .dark .shadow-lg.backdrop-blur-xl:hover,
 .dark .shadow-card.backdrop-blur-xl:hover {
   border-color: rgba(176, 148, 84, 0.4) !important; /* Subtle gold border on hover */
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-  transform: translateY(-2px) !important;
 }
 
 /* Re-route legacy gold utility classes to purple */

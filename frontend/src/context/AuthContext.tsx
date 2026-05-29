@@ -11,6 +11,7 @@ type AppUser = {
   email: string;
   role: Role;
   department?: string;
+  semester?: string;
   enrollmentNumber?: string | null;
 };
 
@@ -38,6 +39,7 @@ interface AuthContextType {
   login: (input: LoginInput) => Promise<{ role: Role }>;
   signupRequest: (input: SignupRequestInput) => Promise<{ message: string; devGeneratedPassword?: string }>;
   logout: () => Promise<void>;
+  updateUser: (user: Partial<AppUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -73,6 +75,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           email: profile.user.email,
           role: profile.user.role,
           department: profile.user.department,
+          semester: profile.user.semester,
           enrollmentNumber: profile.user.enrollmentNumber,
         };
 
@@ -102,6 +105,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       email: response.user.email,
       role: response.user.role,
       department: response.user.department,
+      semester: response.user.semester,
       enrollmentNumber: response.user.enrollmentNumber,
     };
 
@@ -144,6 +148,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem("hodBranch");
   };
 
+  const updateUser = (updates: Partial<AppUser>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser));
+  };
+
   const value = useMemo(
     () => ({
       user,
@@ -154,6 +165,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       login,
       signupRequest,
       logout,
+      updateUser,
     }),
     [token, tenantSlug, user]
   );

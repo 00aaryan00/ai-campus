@@ -41,6 +41,7 @@ const roleTabs = {
   principal: [
     { id: "dashboard", label: "Dashboard", icon: "📊" },
     { id: "leaves", label: "Leave Overview", icon: "📝" },
+    { id: "timetable", label: "Timetable Upload", icon: "🗓️" },
     { id: "alerts", label: "Smart Alerts", icon: "🚨" },
     { id: "performance", label: "Performance", icon: "📈" },
     { id: "notifications", label: "Notifications", icon: "🔔" },
@@ -97,10 +98,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-[#020817] dark:text-white">
       <div className="flex min-h-screen">
         {/* ─── SIDEBAR (Desktop) ─── */}
-        <aside className="hidden w-[260px] flex-col justify-between border-r border-slate-200/60 bg-white/90 p-6 shadow-card backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#090b14]/95 lg:flex">
+        <aside className="sticky top-0 h-screen hidden w-[260px] flex-col justify-between border-r border-slate-200/60 bg-white/90 p-6 shadow-card backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#090b14]/95 lg:flex overflow-y-auto">
           <div>
             {/* Logo */}
-            <div className="mb-10 flex items-center gap-3">
+            <div className="mb-4 flex items-center gap-3">
               <img src={logo} alt="Logo" className="h-14 w-14 bg-white rounded-lg p-0.5 object-contain" />
               <div>
                 <h1 className="font-display text-2xl font-black">
@@ -178,7 +179,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             )}
           </div>
 
-          <div className="flex justify-end items-center gap-4 px-4 pt-3 md:px-8">
+          <div className="flex justify-end items-center gap-4 px-4 pt-4 md:px-8 md:pt-6">
             <ThemeToggle />
             <button
               onClick={handleLogout}
@@ -189,7 +190,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </button>
           </div>
 
-          <section className="px-4 pb-4 pt-2 text-slate-900 dark:text-white md:px-8 md:pb-8 md:pt-4">
+          <section className="px-4 pb-8 pt-6 text-slate-900 dark:text-white md:px-8 md:pb-8 md:pt-8">
             {children}
           </section>
         </main>

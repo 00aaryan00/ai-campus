@@ -11,7 +11,8 @@ import ProgressCard from "../components/ProgressCard";
 import { applyLeave, listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
-import { resultApi } from "../services/api";
+import { resultApi, API_BASE_URL } from "../services/api";
+import StudentSemesterModal from "../components/StudentSemesterModal";
 
 type StudentData = {
   name: string;
@@ -126,9 +127,28 @@ export default function StudentDashboard() {
     }>
   >([]);
 
-  const todaySchedule = dayStatus.isWorkingDay
-    ? timetable[dayStatus.dayName] || []
-    : [];
+  const [mySchedule, setMySchedule] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadSchedule = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/t/${tenantSlug}/timetable/my-schedule`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setMySchedule(data.schedule);
+        }
+      } catch (err) {
+        console.error("Failed to fetch schedule", err);
+      }
+    };
+    if (tenantSlug) loadSchedule();
+  }, [tenantSlug]);
+
+  // Derived filtered schedules based on the new backend structure
+  const todaySchedule = mySchedule.filter(item => item.dayOfWeek === dayStatus.dayName);
+  const selectedDaySchedule = mySchedule.filter(item => item.dayOfWeek === selectedDay);
     
   const theoryAttendance = [
     { name: "Software Engineering", code: "CSE1005", percent: 79 },
@@ -254,14 +274,18 @@ export default function StudentDashboard() {
   }
 
   const displayName = user?.name?.trim() || data.name;
-  const studentMeta =
-    user?.enrollmentNumber?.trim() ||
-    user?.department?.trim()?.toUpperCase() ||
-    user?.email?.trim() ||
-    "Student";
+  const metaParts = [];
+  if (user?.enrollmentNumber) metaParts.push(user.enrollmentNumber.trim());
+  if (user?.department) metaParts.push(user.department.trim().toUpperCase());
+  if (user?.semester) metaParts.push(` ${user.semester}`);
+
+  const studentMeta = metaParts.length > 0 
+    ? metaParts.join(" | ") 
+    : (user?.email?.trim() || "Student");
 
   return (
     <MainLayout>
+      <StudentSemesterModal />
       <div className="mb-8">
         <h1 className="text-4xl font-black text-slate-900 dark:text-white">
           Student Dashboard
@@ -352,17 +376,16 @@ export default function StudentDashboard() {
               ))}
             </div>
 
-            {(timetable[selectedDay] || []).length > 0 ? (
+            {selectedDaySchedule.length > 0 ? (
               <div className="relative border-l-2 border-blue-500/30 pl-6 space-y-8 ml-3">
-                {(timetable[selectedDay] || []).map((item, index) => (
+                {selectedDaySchedule.map((item, index) => (
                   <div key={index} className="relative">
                     <div className="absolute -left-[35px] top-1 h-4 w-4 rounded-full border-4 border-white bg-blue-500 dark:border-[#0C1330]"></div>
-                    <div className="text-sm font-bold text-blue-500 dark:text-blue-400 mb-2">{item.time}</div>
+                    <div className="text-sm font-bold text-blue-500 dark:text-blue-400 mb-2">{item.startTime} - {item.endTime}</div>
                     <div className={innerCardClass}>
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">{item.subject}</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{item.teacher}</p>
-                      <p className="text-sm font-semibold text-blue-500 mt-2">{item.type}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Room No. {item.room}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{item.facultyId?.name || "Faculty"} ({item.facultyId?.email})</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Room No. {item.room}</p>
                     </div>
                   </div>
                 ))}

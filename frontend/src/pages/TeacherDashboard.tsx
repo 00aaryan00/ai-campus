@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import Charts from "../components/Charts";
 import DayStatusCard, {
@@ -6,6 +7,7 @@ import DayStatusCard, {
 } from "../components/DayStatusCard";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { resultApi, API_BASE_URL } from "../services/api";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
@@ -113,6 +115,7 @@ const AI_TAGS = [
 
 export default function TeacherDashboard() {
   const { token, user } = useAuth();
+  const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<TeacherData | null>(null);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -150,7 +153,29 @@ export default function TeacherDashboard() {
 
   const day = getCurrentDayStatus();
   const [selectedDay, setSelectedDay] = useState(day.dayName);
-  const schedule = day.isWorkingDay ? timetable[day.dayName] || [] : [];
+  
+  const [mySchedule, setMySchedule] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadSchedule = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/t/${tenantSlug}/timetable/my-schedule`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setMySchedule(data.schedule);
+        }
+      } catch (err) {
+        console.error("Failed to fetch schedule", err);
+      }
+    };
+    if (tenantSlug) loadSchedule();
+  }, [tenantSlug]);
+
+  // Derived filtered schedules based on the new backend structure
+  const todaySchedule = mySchedule.filter(item => item.dayOfWeek === day.dayName);
+  const selectedDaySchedule = mySchedule.filter(item => item.dayOfWeek === selectedDay);
 
   useEffect(() => {
     // Backend-first mode: avoid hard dependency on Firestore data for dashboard boot.
@@ -461,7 +486,7 @@ export default function TeacherDashboard() {
               <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
                 Today Classes 📚
               </p>
-              <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">{schedule.length}</h2>
+              <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">{todaySchedule.length}</h2>
             </div>
 
             <div className={card}>
@@ -521,17 +546,16 @@ export default function TeacherDashboard() {
               ))}
             </div>
 
-            {(timetable[selectedDay] || []).length > 0 ? (
+            {selectedDaySchedule.length > 0 ? (
               <div className="relative border-l-2 border-blue-500/30 pl-6 space-y-8 ml-3">
-                {(timetable[selectedDay] || []).map((item, index) => (
+                {selectedDaySchedule.map((item, index) => (
                   <div key={index} className="relative">
                     <div className="absolute -left-[35px] top-1 h-4 w-4 rounded-full border-4 border-white bg-blue-500 dark:border-[#0C1330]"></div>
-                    <div className="text-sm font-bold text-blue-500 dark:text-blue-400 mb-2">{item.time}</div>
-                    <div className={inner}>
+                    <div className="text-sm font-bold text-blue-500 dark:text-blue-400 mb-2">{item.startTime} - {item.endTime}</div>
+                    <div className="card-hover rounded-2xl border border-slate-200/40 bg-slate-50 p-4 text-slate-800 dark:border-blue-500/10 dark:bg-[#111B44] dark:text-slate-100">
                       <h3 className="text-lg font-bold text-slate-900 dark:text-white">{item.subject}</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{item.class}</p>
-                      <p className="text-sm font-semibold text-blue-500 mt-2">{item.type}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{item.room}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Class: {item.department} ({item.semester})</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Room No. {item.room}</p>
                     </div>
                   </div>
                 ))}
