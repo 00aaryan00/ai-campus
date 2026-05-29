@@ -26,12 +26,12 @@ export default function DayStatusCard() {
   const dayStatus = getCurrentDayStatus();
 
   return (
-    <div className="card-hover rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white">
+    <div className="card-hover rounded-3xl border border-slate-200/60 hover:border-gold-500 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white transition-all">
       <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
         Today
       </p>
 
-      <h2 className="mt-2 font-display text-3xl font-black text-slate-900 dark:text-white">
+      <h2 className="mt-2 font-display text-3xl font-black text-gold-500 dark:text-white">
         {dayStatus.dayName}
       </h2>
 

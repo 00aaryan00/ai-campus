@@ -22,8 +22,8 @@
   --text-secondary: #94a3b8;
   --text-muted: #475569;
 
-  --border: rgba(99, 102, 241, 0.2);
-  --border-hover: rgba(99, 102, 241, 0.5);
+  --border: rgba(176, 148, 84, 0.2);
+  --border-hover: rgba(176, 148, 84, 0.5);
 
   --glass-bg: rgba(15, 23, 42, 0.7);
   --glass-border: rgba(255, 255, 255, 0.06);
@@ -58,12 +58,12 @@
   --glass-border: rgba(200, 149, 46, 0.15); /* Gold glass border */
   --glass-blur: blur(16px);
 
-  --shadow-glow: 0 0 40px rgba(200, 149, 46, 0.15); /* Gold glow */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 40px rgba(176, 148, 84, 0.15); /* Gold glow */
+  --shadow-card: 0 4px 24px rgba(30, 32, 88, 0.08);
 
-  --gradient-hero: linear-gradient(135deg, #FFF9E6 0%, #FFF5D6 50%, #FFF0BF 100%); /* Gold/Blue gradient */
-  --gradient-primary: linear-gradient(135deg, #C8952E, #FFD54F); /* Gold gradient */
-  --accent-blue: #2563EB; /* Deep Blue */
+  --gradient-hero: linear-gradient(135deg, #1e2058 0%, #11133b 100%); /* Navy gradient */
+  --gradient-primary: linear-gradient(135deg, #b09454 0%, #d3ba84 100%); /* Gold gradient */
+  --accent-blue: #1e2058; /* Skillarion Navy */
 }
 
 /* ─── Reset ─────────────────────────────────────────────────── */
@@ -540,8 +540,18 @@ input, textarea, select { font-family: inherit; outline: none; }
 .navLink {
   font-size: 16px; color: var(--text-secondary);
   font-weight: 500; transition: var(--transition);
+  position: relative;
+}
+.navLink::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -4px;
+  width: 0%; height: 2px;
+  background: var(--gradient-primary);
+  transition: var(--transition);
 }
 .navLink:hover { color: var(--text-primary); }
+.navLink:hover::after { width: 100%; }
 .themeToggle {
   width: 40px; height: 40px; border-radius: 50%;
   background: rgba(99,102,241,0.12);

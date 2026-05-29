@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import ThemeToggle from "../components/ThemeToggle";
+
 import { authApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -112,31 +112,30 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_80%_0%,#164e63,#0f172a_45%,#020617)] text-slate-100 p-4 md:p-8">
-      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-5 py-3">
+    <div className="min-h-screen bg-navy-950 text-slate-100 p-4 md:p-8">
+      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-3">
         <Link to="/" className="flex items-center gap-2 text-slate-100">
           <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
-          <span className="font-semibold">AI Classroom</span>
+          <span className="font-display font-black text-gold-500 text-xl tracking-wide">AI Classroom</span>
         </Link>
         <div className="flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm">Back</button>
-          <Link to="/tenant-access" className="rounded-lg border border-cyan-300/40 px-3 py-1.5 text-sm text-cyan-200">Institution Choice</Link>
+          <Link to="/tenant-access" className="rounded-lg border border-gold-500/40 px-3 py-1.5 text-sm text-gold-400 hover:bg-gold-500/10 transition">Institution Choice</Link>
         </div>
       </div>
       <div className="mx-auto max-w-5xl rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl">
         <div className="grid md:grid-cols-[1fr_1.4fr]">
-          <aside className="p-8 md:p-10 bg-gradient-to-b from-emerald-500/20 to-transparent">
+          <aside className="p-8 md:p-10 bg-gradient-to-b from-gold-500/10 to-transparent">
             <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Guided Signup</div>
-              <ThemeToggle />
+              <div className="text-xs uppercase tracking-[0.2em] text-gold-400">Guided Signup</div>
             </div>
-            <h1 className="mt-8 text-3xl font-black">{tenant.name}</h1>
-            <p className="mt-2 text-emerald-100/80">Answer a few questions and we will set up access.</p>
+            <h1 className="mt-8 text-3xl font-display font-black text-white">{tenant.name}</h1>
+            <p className="mt-2 text-slate-300">Answer a few questions and we will set up access.</p>
             <div className="mt-8 flex gap-2">
               {[1, 2, 3, 4].map((dot) => (
                 <span
                   key={dot}
-                  className={`h-2.5 w-9 rounded-full ${step >= dot ? "bg-emerald-300" : "bg-white/20"}`}
+                  className={`h-2.5 w-9 rounded-full transition-all ${step >= dot ? "bg-gold-500" : "bg-white/20"}`}
                 />
               ))}
             </div>
@@ -154,8 +153,8 @@ export default function Signup() {
                       onClick={() => setRole(item.role)}
                       className={`rounded-xl border p-4 text-left transition ${
                         role === item.role
-                          ? "border-emerald-300 bg-emerald-400/15"
-                          : "border-white/15 bg-black/20 hover:border-emerald-300/50"
+                          ? "border-gold-500 bg-gold-500/15 shadow-sm shadow-gold-500/10"
+                          : "border-white/15 bg-black/20 hover:border-gold-500/50"
                       }`}
                     >
                       <div className="font-semibold">{item.title}</div>
@@ -166,7 +165,7 @@ export default function Signup() {
                 <button
                   disabled={!canStep2}
                   onClick={() => setStep(2)}
-                  className="mt-6 w-full rounded-xl bg-emerald-400 text-slate-950 font-bold py-3 disabled:opacity-50"
+                  className="mt-6 w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 shadow-lg shadow-gold-500/25 transition disabled:opacity-50"
                 >
                   Continue
                 </button>
@@ -182,20 +181,20 @@ export default function Signup() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Full name"
-                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-emerald-300"
+                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                   />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={emailFieldLabel}
-                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-emerald-300"
+                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                   />
                   <input
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
                     placeholder="Department (e.g. CSE)"
-                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-emerald-300"
+                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                   />
                 </div>
                 <div className="mt-6 flex gap-3">
@@ -205,7 +204,7 @@ export default function Signup() {
                   <button
                     disabled={!canStep3}
                     onClick={() => setStep(3)}
-                    className="flex-1 rounded-xl bg-emerald-400 text-slate-950 font-bold py-3 disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 shadow-lg shadow-gold-500/25 transition disabled:opacity-50"
                   >
                     Continue
                   </button>
@@ -227,7 +226,7 @@ export default function Signup() {
                       value={enrollmentNumber}
                       onChange={(e) => setEnrollmentNumber(e.target.value)}
                       placeholder="Enrollment number"
-                      className="w-full rounded-xl border border-white/15 bg-black/30 px-4 py-3 outline-none focus:border-emerald-300"
+                      className="w-full rounded-xl border border-white/15 bg-black/30 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                     />
                   ) : (
                     <div className="text-sm text-slate-300">Enrollment number is not required for this role.</div>
@@ -241,7 +240,7 @@ export default function Signup() {
                   <button
                     disabled={!canSubmit || submitting}
                     onClick={handleSubmit}
-                    className="flex-1 rounded-xl bg-emerald-400 text-slate-950 font-bold py-3 disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 shadow-lg shadow-gold-500/25 transition disabled:opacity-50"
                   >
                     {submitting ? "Requesting..." : "Request account"}
                   </button>
@@ -261,7 +260,7 @@ export default function Signup() {
                 <div className="mt-6">
                   <button
                     onClick={() => navigate(`/t/${tenantSlug}/login`)}
-                    className="w-full rounded-xl bg-emerald-400 text-slate-950 font-bold py-3"
+                    className="w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 shadow-lg shadow-gold-500/25 transition"
                   >
                     Go to login
                   </button>
@@ -271,7 +270,7 @@ export default function Signup() {
 
             <p className="mt-6 text-sm text-slate-300">
               Already have credentials?{" "}
-              <Link to={`/t/${tenantSlug}/login`} className="text-emerald-300 font-semibold">
+              <Link to={`/t/${tenantSlug}/login`} className="text-gold-400 font-semibold hover:text-gold-300 transition">
                 Sign in
               </Link>
             </p>

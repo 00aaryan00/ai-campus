@@ -667,9 +667,10 @@ export default function TeacherDashboard() {
 
       {activeTab === "exams" && (
         <>
-          <div className="mb-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 dark:bg-[#0C1330]">
-            Create Exam
-          </div>
+          <SectionHeader
+            title="Create Exam"
+            description="Design, customize, and publish assessments using our AI question generator."
+          />
 
           <div className="space-y-6">
             <aside className="h-fit rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white">
@@ -867,7 +868,7 @@ export default function TeacherDashboard() {
                 <button
                   onClick={handleGenerateQuestions}
                   disabled={aiLoading}
-                  className="mt-3 w-full rounded-xl bg-indigo-600 px-5 py-2 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                  className="mt-3 w-full rounded-xl bg-gradient-to-r from-navy-600 to-navy-800 hover:from-navy-700 hover:to-navy-900 px-5 py-2 font-bold text-white transition shadow-md disabled:opacity-60"
                 >
                   {aiLoading ? "Generating..." : "Generate Questions with AI"}
                 </button>
@@ -875,7 +876,7 @@ export default function TeacherDashboard() {
 
               <button
                 onClick={handleCreateExam}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 font-bold text-white shadow-lg shadow-indigo-500/25 transition"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 px-6 py-3 font-bold text-white shadow-lg shadow-gold-500/25 transition"
               >
                 Create Assessment
               </button>

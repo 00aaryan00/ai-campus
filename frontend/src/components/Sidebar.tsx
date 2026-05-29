@@ -17,12 +17,12 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
   return (
     <>
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#060D1F] border-r border-gray-800 p-6 transform transition-transform duration-300
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-navy-950 border-r border-navy-800 p-6 transform transition-transform duration-300
         ${open ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex md:flex-col`}
       >
         <div className="flex items-center justify-between md:block">
-          <h1 className="text-2xl font-bold text-blue-400 mb-0 md:mb-10">
+          <h1 className="text-2xl font-black font-display text-gold-500 mb-0 md:mb-10">
             AI Classroom
           </h1>
 
@@ -41,10 +41,10 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
               to={item.path}
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 p-3 rounded-xl transition ${
+                `flex items-center gap-3 p-3 transition ${
                   isActive
-                    ? "bg-blue-500 text-white shadow-lg"
-                    : "hover:bg-white/10 text-gray-300"
+                    ? "border-l-4 border-gold-500 bg-navy-800 text-gold-400 rounded-r-xl"
+                    : "hover:bg-white/5 text-slate-400 rounded-xl"
                 }`
               }
             >
@@ -54,7 +54,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
           ))}
         </nav>
 
-        <div className="mt-auto text-xs text-gray-500 pt-8">
+        <div className="mt-auto text-xs text-navy-400 pt-8">
           © 2026 AI Classroom
         </div>
       </div>

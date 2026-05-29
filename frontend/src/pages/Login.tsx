@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import ThemeToggle from "../components/ThemeToggle";
+
 import { useAuth } from "../context/AuthContext";
 import { authApi } from "../services/api";
 
@@ -85,11 +85,11 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#172554,#0b1020_45%,#030712)] text-slate-100 p-4 md:p-8">
-      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-5 py-3">
+    <div className="min-h-screen bg-navy-950 text-slate-100 p-4 md:p-8">
+      <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-3">
         <Link to="/" className="flex items-center gap-2 text-slate-100">
           <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
-          <span className="font-semibold">AI Classroom</span>
+          <span className="font-display font-black text-gold-500 text-xl tracking-wide">AI Classroom</span>
         </Link>
         <div className="flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm">Back</button>
@@ -97,18 +97,17 @@ export default function Login() {
       </div>
       <div className="mx-auto max-w-5xl rounded-3xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl">
         <div className="grid md:grid-cols-[1.1fr_1.3fr]">
-          <aside className="p-8 md:p-10 bg-gradient-to-b from-cyan-500/20 to-transparent">
+          <aside className="p-8 md:p-10 bg-gradient-to-b from-gold-500/10 to-transparent">
             <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Tenant Access</div>
-              <ThemeToggle />
+              <div className="text-xs uppercase tracking-[0.2em] text-gold-400">Tenant Access</div>
             </div>
-            <h1 className="mt-8 text-3xl font-black">{tenant.name}</h1>
-            <p className="mt-2 text-cyan-100/80">
+            <h1 className="mt-8 text-3xl font-display font-black text-white">{tenant.name}</h1>
+            <p className="mt-2 text-slate-300">
               {tenant.authMode === "roster_based"
                 ? "Sign in with your institute-registered email account."
                 : "Sign in with your institutional domain email account."}
             </p>
-            <div className="mt-8 rounded-xl border border-white/15 p-4 text-sm text-cyan-100/90">
+            <div className="mt-8 rounded-xl border border-white/15 p-4 text-sm text-slate-300">
               <div>Tenant: {tenant.slug}</div>
               <div>Status: {tenant.status}</div>
             </div>
@@ -130,7 +129,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-cyan-300"
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                 />
               </div>
               <div>
@@ -141,7 +140,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 pr-11 outline-none focus:border-cyan-300"
+                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 pr-11 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                   />
                   <button
                     type="button"
@@ -156,7 +155,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-cyan-400 text-slate-950 font-bold py-3 hover:bg-cyan-300 disabled:opacity-60"
+                className="w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 hover:from-gold-600 hover:to-gold-700 shadow-lg shadow-gold-500/25 transition disabled:opacity-60"
               >
                 {loading ? "Signing in..." : "Sign in"}
               </button>
@@ -164,7 +163,7 @@ export default function Login() {
 
             <p className="mt-6 text-sm text-slate-300">
               New here?{" "}
-              <Link to={`/t/${tenantSlug}/signup`} className="text-cyan-300 font-semibold">
+              <Link to={`/t/${tenantSlug}/signup`} className="text-gold-400 font-semibold hover:text-gold-300 transition">
                 Request account access
               </Link>
             </p>

@@ -44,7 +44,7 @@ export default function TenantEntry() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center bg-[#090f1e] px-4">
+    <div className="min-h-screen grid place-items-center bg-navy-950 px-4">
       <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-8 text-slate-100 backdrop-blur">
         <h1 className="text-2xl font-bold">Enter your institution</h1>
         <p className="mt-2 text-slate-300">Select your institution name to continue.</p>
@@ -52,13 +52,13 @@ export default function TenantEntry() {
           value={tenantSlug}
           onChange={(e) => setTenantSlug(e.target.value)}
           disabled={loading || institutions.length === 0}
-          className="mt-6 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-cyan-300"
+          className="mt-6 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
         >
-          <option value="">
+          <option value="" className="bg-navy-900 text-slate-100">
             {loading ? "Loading institutions..." : "Select institution"}
           </option>
           {institutions.map((institution) => (
-            <option key={institution.id} value={institution.slug}>
+            <option key={institution.id} value={institution.slug} className="bg-navy-900 text-slate-100">
               {institution.name} ({institution.slug})
             </option>
           ))}
@@ -68,7 +68,7 @@ export default function TenantEntry() {
           <button
             onClick={() => proceed("login")}
             disabled={!tenantSlug.trim()}
-            className="rounded-xl bg-cyan-400 py-3 font-bold text-slate-950 disabled:opacity-50"
+            className="rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 py-3 font-bold text-white shadow-lg shadow-gold-500/25 transition disabled:opacity-50"
           >
             Go to Login
           </button>
@@ -82,7 +82,7 @@ export default function TenantEntry() {
         </div>
         <button
           onClick={() => navigate("/platform/login")}
-          className="mt-3 w-full rounded-xl border border-cyan-300/40 py-3 font-semibold text-cyan-200"
+          className="mt-3 w-full rounded-xl border border-gold-500/40 py-3 font-semibold text-gold-400 hover:bg-gold-500/10 transition"
         >
           Super Admin Setup
         </button>
