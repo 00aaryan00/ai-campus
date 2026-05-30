@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { platformApi } from "../services/api";
+import logo from "../assets/logo.png";
 
 const PLATFORM_TOKEN_KEY = "platformSuperAdminToken";
 
@@ -47,7 +48,12 @@ export default function PlatformInstitutions() {
       <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 bg-white/5 p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
           <Link to="/" className="flex items-center gap-2 text-slate-100">
-            <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
+            {/* <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" /> */}
+            <img
+  src={logo}
+  alt="AI Classroom"
+  className="w-10 h-10 rounded-lg bg-white p-1 object-contain"
+/>
             <span className="font-semibold">AI Classroom</span>
           </Link>
           <div className="flex gap-2">
