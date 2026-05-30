@@ -17,13 +17,18 @@ export const tenantSession = {
 };
 
 const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
+  const isFormData = options.body instanceof FormData;
+  const headers: Record<string, string> = {
+    ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+  };
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method || "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    headers,
+    body: isFormData ? (options.body as FormData) : (options.body ? JSON.stringify(options.body) : undefined),
   });
 
   const payload = await response.json().catch(() => null);
@@ -587,5 +592,41 @@ export const tenantAdminApi = {
       method: "PATCH",
       token,
       body: { status },
+    }),
+};
+
+export type EventAudience = "hods" | "faculty" | "students" | "all";
+
+export type EventItem = {
+  _id: string;
+  title: string;
+  venue: string;
+  date: string;
+  description?: string;
+  fileUrl?: string;
+  targetAudience: EventAudience;
+  tenantSlug: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export const eventApi = {
+  getEvents: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; events: EventItem[] }>(tenantPath(tenantSlug, `/events`), {
+      method: "GET",
+      token,
+    }),
+
+  createEvent: (token: string, tenantSlug: string, formData: FormData) =>
+    request<{ success: boolean; event: EventItem }>(tenantPath(tenantSlug, `/events`), {
+      method: "POST",
+      token,
+      body: formData,
+    }),
+
+  deleteEvent: (token: string, tenantSlug: string, eventId: string) =>
+    request<{ success: boolean; message: string }>(tenantPath(tenantSlug, `/events/${eventId}`), {
+      method: "DELETE",
+      token,
     }),
 };

@@ -12,7 +12,7 @@ import { applyLeave, listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
 import { TrendingUp, BookOpen, FileText, MailX, CheckCircle, XCircle } from "lucide-react";
-import { resultApi, API_BASE_URL } from "../services/api";
+import { resultApi, API_BASE_URL, eventApi, type EventItem } from "../services/api";
 import StudentSemesterModal from "../components/StudentSemesterModal";
 
 type StudentData = {
@@ -77,6 +77,7 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<StudentData | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
 
   const [leaveReason, setLeaveReason] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -180,6 +181,19 @@ export default function StudentDashboard() {
       }
     };
     loadRecentAttempts();
+
+    const fetchEvents = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || "";
+        if (tenantSlug && token) {
+          const res = await eventApi.getEvents(token, tenantSlug);
+          if (res.success) setEvents(res.events);
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+      }
+    };
+    fetchEvents();
   }, [tenantSlug, user?.id]);
 
   useEffect(() => {
@@ -692,27 +706,33 @@ export default function StudentDashboard() {
               📢 Notice Board
             </h2>
             <div className="space-y-3">
-              <div className={innerCardClass}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Mid-Semester Exam Timetable Released</p>
-                  <span className="text-xs text-slate-400">2 hours ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Check the exams tab for your subject-wise examination schedule. Prepare accordingly.</p>
-              </div>
-              <div className={innerCardClass}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Annual Tech Fest Registration Open</p>
-                  <span className="text-xs text-slate-400">1 day ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Register for hackathons, coding competitions, and project exhibitions before May 18.</p>
-              </div>
-              <div className={innerCardClass}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Sports Day — 1 June 2026</p>
-                  <span className="text-xs text-slate-400">3 days ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Annual inter-department sports event. Register with your class representative by May 25.</p>
-              </div>
+              {events.length === 0 ? (
+                <p className="text-slate-500">No events/notices scheduled.</p>
+              ) : (
+                events.map((evt) => (
+                  <div key={evt._id} className={innerCardClass}>
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">{evt.title}</p>
+                      <span className="text-xs text-slate-400">
+                        📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                        {evt.targetAudience !== 'all' && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                            Dept: {evt.targetAudience.toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    {evt.description && (
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{evt.description}</p>
+                    )}
+                    {evt.fileUrl && (
+                      <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                        📎 View Attachment
+                      </a>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>

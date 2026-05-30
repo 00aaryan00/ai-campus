@@ -12,6 +12,9 @@ import {
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
 import { BarChart3, TrendingUp, MailX, Users, Building } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { eventApi, API_BASE_URL } from "../services/api";
+import type { EventItem } from "../services/api";
 
 type HODData = {
   name: string;
@@ -80,9 +83,17 @@ const SectionHeader = ({
 
 export default function HODDashboard() {
   const { user } = useAuth();
+  const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<HODData | null>(null);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventVenue, setEventVenue] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventDesc, setEventDesc] = useState("");
+  const [eventFile, setEventFile] = useState<File | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(
     days[new Date().getDay() === 0 ? 0 : new Date().getDay() - 1]
   );
@@ -119,8 +130,21 @@ export default function HODDashboard() {
       );
     });
 
+    const fetchEvents = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || "";
+        if (tenantSlug && token) {
+          const res = await eventApi.getEvents(token, tenantSlug);
+          if (res.success) setEvents(res.events);
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+      }
+    };
+    fetchEvents();
+
     return () => unsubscribe();
-  }, [selectedBranch]);
+  }, [tenantSlug, selectedBranch]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -134,6 +158,56 @@ export default function HODDashboard() {
       window.removeEventListener("hodTabChange", handler);
     };
   }, []);
+
+  const handlePublishEvent = async () => {
+    if (!eventTitle || !eventVenue || !eventDate) return alert("Please fill title, venue, and date.");
+    try {
+      setIsPublishing(true);
+      const token = localStorage.getItem("authToken") || "";
+      if (!token || !tenantSlug) return;
+      
+      const formData = new FormData();
+      formData.append("title", eventTitle);
+      formData.append("venue", eventVenue);
+      formData.append("date", eventDate);
+      formData.append("description", eventDesc);
+      if (eventFile) {
+        formData.append("file", eventFile);
+      }
+
+      const res = await eventApi.createEvent(token, tenantSlug, formData);
+      if (res.success) {
+        setEvents((prev) => [...prev, res.event]);
+        setEventTitle("");
+        setEventVenue("");
+        setEventDate("");
+        setEventDesc("");
+        setEventFile(null);
+        alert("Event published successfully!");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to publish event");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+    try {
+      const token = localStorage.getItem("authToken") || "";
+      if (!token || !tenantSlug) return;
+      
+      const res = await eventApi.deleteEvent(token, tenantSlug, eventId);
+      if (res.success) {
+        setEvents((prev) => prev.filter(e => e._id !== eventId));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete event");
+    }
+  };
 
   const update = async (id: string, status: "Approved" | "Rejected") => {
     try {
@@ -388,50 +462,33 @@ export default function HODDashboard() {
       {activeTab === "events" && (
         <>
           <SectionHeader
-            title="Event Schedule Manager"
-            description="Create and manage institutional events, upload notices and schedule documents."
+            title="Institutional Events"
+            description="Create and manage institutional events for your department."
           />
 
           <div className={card}>
             <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
               📅 Create New Event
             </h2>
-
             <div className="grid gap-4 md:grid-cols-2">
-              <input
-                type="text"
-                placeholder="Event Title"
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-              <input
-                type="text"
-                placeholder="Venue (e.g. Auditorium, Hall B)"
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-              <input
-                type="date"
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
+              <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Event Title" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+              <input type="text" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} placeholder="Venue" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+              <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             </div>
-
-            <textarea
-              placeholder="Event description or additional instructions..."
-              rows={3}
-              className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-            />
-
+            <textarea value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             <div className="mt-4">
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-gold-500 dark:border-blue-500/20 dark:bg-[#111B44] dark:hover:border-blue-400">
                 <span className="text-2xl">📎</span>
                 <div>
                   <p className="font-semibold text-slate-700 dark:text-white">Upload Notice / Schedule</p>
-                  <p className="text-sm text-slate-400">PDF, DOCX, JPG, PNG (Max 10MB)</p>
+                  <p className="text-sm text-slate-400">{eventFile ? eventFile.name : "PDF, DOCX, JPG, PNG (Max 10MB)"}</p>
                 </div>
-                <input type="file" className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
+                <input type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
               </label>
             </div>
-
-            <button className={`${btn} mt-5`}>Publish Event</button>
+            <button onClick={handlePublishEvent} disabled={isPublishing} className="mt-5 rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isPublishing ? "Publishing..." : "Publish Event"}
+            </button>
           </div>
 
           <div className={`mt-6 ${card}`}>
@@ -439,36 +496,41 @@ export default function HODDashboard() {
               📋 Upcoming Events
             </h2>
             <div className="space-y-3">
-              <div className={inner}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-lg font-bold">Annual Tech Fest 2026</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 Main Auditorium &middot; 🗓️ 20 May 2026 &middot; 🕐 10:00 AM</p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Technical competitions, hackathons, and project exhibitions for all branches.</p>
+              {events.length === 0 ? (
+                <p className="text-slate-500">No events scheduled.</p>
+              ) : (
+                events.map((evt) => (
+                  <div key={evt._id} className={inner}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-lg font-bold">{evt.title}</p>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                          📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                          {evt.targetAudience !== 'all' && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                              Dept: {evt.targetAudience.toUpperCase()}
+                            </span>
+                          )}
+                        </p>
+                        {evt.description && (
+                          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                        )}
+                        {evt.fileUrl && (
+                          <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                            📎 View Attachment
+                          </a>
+                        )}
+                      </div>
+                      {/* Only allow deleting if HOD is the creator, but for simplicity, we allow deleting their dept events */}
+                      {evt.targetAudience !== 'all' && (
+                        <button onClick={() => handleDeleteEvent(evt._id)} className="text-red-500 hover:text-red-700 font-bold p-2" title="Delete Event">
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span className="rounded-lg bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">Active</span>
-                </div>
-              </div>
-              <div className={inner}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-lg font-bold">Faculty Development Program</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 Conference Hall B &middot; 🗓️ 25 May 2026 &middot; 🕐 2:00 PM</p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Workshop on AI-integrated teaching methodologies and modern pedagogy.</p>
-                  </div>
-                  <span className="rounded-lg bg-gold-500/15 px-3 py-1 text-xs font-bold text-gold-600 dark:text-blue-400">Upcoming</span>
-                </div>
-              </div>
-              <div className={inner}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-lg font-bold">Sports Day</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 College Ground &middot; 🗓️ 1 June 2026 &middot; 🕐 8:00 AM</p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Annual inter-department sports competition. All students are encouraged to participate.</p>
-                  </div>
-                  <span className="rounded-lg bg-gold-500/15 px-3 py-1 text-xs font-bold text-gold-600 dark:text-blue-400">Upcoming</span>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
         </>

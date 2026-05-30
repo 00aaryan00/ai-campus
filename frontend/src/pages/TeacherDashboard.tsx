@@ -12,7 +12,7 @@ import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
 import { useAuth } from "../context/AuthContext";
-import { facultyAiApi, facultyTestApi } from "../services/api";
+import { facultyAiApi, facultyTestApi, eventApi, type EventItem } from "../services/api";
 
 type LeaveRequest = {
   id?: string;
@@ -98,6 +98,7 @@ export default function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<TeacherData | null>(null);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
   
   const [examType, setExamType] = useState<"" | "common" | "adaptive">("");
   const [commonDifficulty, setCommonDifficulty] = useState<"" | "easy" | "medium" | "hard">("");
@@ -149,7 +150,21 @@ export default function TeacherDashboard() {
         console.error("Failed to fetch schedule", err);
       }
     };
-    if (tenantSlug) loadSchedule();
+    if (tenantSlug) {
+      loadSchedule();
+      const fetchEvents = async () => {
+        try {
+          const token = localStorage.getItem("authToken") || "";
+          if (tenantSlug && token) {
+            const res = await eventApi.getEvents(token, tenantSlug);
+            if (res.success) setEvents(res.events);
+          }
+        } catch (err) {
+          console.error("Failed to fetch events", err);
+        }
+      };
+      fetchEvents();
+    }
   }, [tenantSlug]);
 
   // Derived filtered schedules based on the new backend structure
@@ -1090,36 +1105,26 @@ export default function TeacherDashboard() {
               📅 Upcoming Events
             </h2>
             <div className="space-y-3">
-              <div className={inner}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-lg font-bold">Annual Tech Fest 2026</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 Main Auditorium &middot; 🗓️ 20 May 2026 &middot; 🕐 10:00 AM</p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Technical competitions, hackathons, and project exhibitions for all branches.</p>
+              {events.length === 0 ? (
+                <p className="text-slate-500">No events scheduled.</p>
+              ) : (
+                events.map((evt) => (
+                  <div key={evt._id} className={inner}>
+                    <p className="text-lg font-bold">{evt.title}</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                    </p>
+                    {evt.description && (
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                    )}
+                    {evt.fileUrl && (
+                      <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                        📎 View Attachment
+                      </a>
+                    )}
                   </div>
-                  <span className="rounded-lg bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">Active</span>
-                </div>
-              </div>
-              <div className={inner}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-lg font-bold">Faculty Development Program</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 Conference Hall B &middot; 🗓️ 25 May 2026 &middot; 🕐 2:00 PM</p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Workshop on AI-integrated teaching methodologies and modern pedagogy.</p>
-                  </div>
-                  <span className="rounded-lg bg-gold-500/15 px-3 py-1 text-xs font-bold text-gold-600 dark:text-blue-400">Upcoming</span>
-                </div>
-              </div>
-              <div className={inner}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-lg font-bold">Sports Day</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 College Ground &middot; 🗓️ 1 June 2026 &middot; 🕐 8:00 AM</p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Annual inter-department sports competition. All students are encouraged to participate.</p>
-                  </div>
-                  <span className="rounded-lg bg-gold-500/15 px-3 py-1 text-xs font-bold text-gold-600 dark:text-blue-400">Upcoming</span>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           </div>
 

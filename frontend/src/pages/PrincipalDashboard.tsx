@@ -9,8 +9,10 @@ import ProgressCard from "../components/ProgressCard";
 import { listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
-import { Users, Briefcase, TrendingUp, Calendar } from "lucide-react";
+import { Users, Briefcase, TrendingUp, Calendar, Trash2 } from "lucide-react";
 import TimetableUploader from "../components/TimetableUploader";
+import { eventApi, API_BASE_URL } from "../services/api";
+import type { EventItem, EventAudience } from "../services/api";
 
 type PrincipalData = {
   name: string;
@@ -62,6 +64,15 @@ export default function PrincipalDashboard() {
   const [data, setData] = useState<PrincipalData | null>(null);
   const [leaveOverview, setLeaveOverview] = useState<LeaveRequest[]>([]);
 
+  // Events State
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventVenue, setEventVenue] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventDesc, setEventDesc] = useState("");
+  const [eventFile, setEventFile] = useState<File | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+
   useEffect(() => {
     setData({
       name: "Principal Demo",
@@ -85,6 +96,20 @@ export default function PrincipalDashboard() {
       setLeaveOverview(leaves);
     });
 
+    // Fetch Events
+    const fetchEvents = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || "";
+        if (tenantSlug && token) {
+          const res = await eventApi.getEvents(token, tenantSlug);
+          if (res.success) setEvents(res.events);
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+      }
+    };
+    fetchEvents();
+
     return () => unsubscribe();
   }, []);
 
@@ -99,7 +124,57 @@ export default function PrincipalDashboard() {
     return () => {
       window.removeEventListener("principalTabChange", handler);
     };
-  }, []);
+  }, [tenantSlug]);
+
+  const handlePublishEvent = async () => {
+    if (!eventTitle || !eventVenue || !eventDate) return alert("Please fill title, venue, and date.");
+    try {
+      setIsPublishing(true);
+      const token = localStorage.getItem("authToken") || "";
+      if (!token || !tenantSlug) return;
+      
+      const formData = new FormData();
+      formData.append("title", eventTitle);
+      formData.append("venue", eventVenue);
+      formData.append("date", eventDate);
+      formData.append("description", eventDesc);
+      if (eventFile) {
+        formData.append("file", eventFile);
+      }
+
+      const res = await eventApi.createEvent(token, tenantSlug, formData);
+      if (res.success) {
+        setEvents((prev) => [...prev, res.event]);
+        setEventTitle("");
+        setEventVenue("");
+        setEventDate("");
+        setEventDesc("");
+        setEventFile(null);
+        alert("Event published successfully!");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to publish event");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+    try {
+      const token = localStorage.getItem("authToken") || "";
+      if (!token || !tenantSlug) return;
+      
+      const res = await eventApi.deleteEvent(token, tenantSlug, eventId);
+      if (res.success) {
+        setEvents((prev) => prev.filter(e => e._id !== eventId));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete event");
+    }
+  };
 
   if (!data) {
     return (
@@ -331,37 +406,61 @@ export default function PrincipalDashboard() {
               </h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <input type="text" placeholder="Event Title" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-              <input type="text" placeholder="Venue" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-              <input type="date" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+              <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Event Title" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+              <input type="text" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} placeholder="Venue" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+              <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             </div>
-            <textarea placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+            <textarea value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             <div className="mt-4">
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-gold-500 dark:border-blue-500/20 dark:bg-[#111B44] dark:hover:border-blue-400">
                 <span className="text-2xl">📎</span>
                 <div>
                   <p className="font-semibold text-slate-700 dark:text-white">Upload Notice / Schedule</p>
-                  <p className="text-sm text-slate-400">PDF, DOCX, JPG, PNG (Max 10MB)</p>
+                  <p className="text-sm text-slate-400">{eventFile ? eventFile.name : "PDF, DOCX, JPG, PNG (Max 10MB)"}</p>
                 </div>
-                <input type="file" className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
+                <input type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
               </label>
             </div>
-            <button className="mt-5 rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md transition hover:scale-105">Publish Event</button>
+            <button onClick={handlePublishEvent} disabled={isPublishing} className="mt-5 rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isPublishing ? "Publishing..." : "Publish Event"}
+            </button>
           </div>
 
           <div className={`mt-6 ${card}`}>
             <h2 className="mb-4 text-xl font-black text-accent-blue">📋 Upcoming Events</h2>
             <div className="space-y-3">
-              <div className={inner}>
-                <p className="text-lg font-bold">Convocation Ceremony 2026</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 Main Auditorium &middot; 🗓️ 15 June 2026 &middot; 🕐 10:00 AM</p>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Annual convocation for graduating batch. Chief guest: Dr. Anil Kumar, ISRO.</p>
-              </div>
-              <div className={inner}>
-                <p className="text-lg font-bold">National Science Day</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">📍 Seminar Hall &middot; 🗓️ 28 Feb 2026 &middot; 🕐 9:00 AM</p>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Guest lectures, paper presentations, and poster exhibitions.</p>
-              </div>
+              {events.length === 0 ? (
+                <p className="text-slate-500">No events scheduled.</p>
+              ) : (
+                events.map((evt) => (
+                  <div key={evt._id} className={inner}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-lg font-bold">{evt.title}</p>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                          📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                          {evt.targetAudience !== 'all' && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                              Dept: {evt.targetAudience.toUpperCase()}
+                            </span>
+                          )}
+                        </p>
+                        {evt.description && (
+                          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                        )}
+                        {evt.fileUrl && (
+                          <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                            📎 View Attachment
+                          </a>
+                        )}
+                      </div>
+                      <button onClick={() => handleDeleteEvent(evt._id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition" title="Delete Event">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>

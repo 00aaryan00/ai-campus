@@ -8,6 +8,8 @@ const adminRoutes = require("./routes/adminRoutes");
 const resultRoutes = require("./routes/resultRoutes");
 const testRoutes = require("./routes/testRoutes");
 const timetableRoutes = require("./routes/timetableRoutes");
+const eventRoutes = require("./routes/eventRoutes");
+const path = require("path");
 const { createRedisConnection } = require("./config/redis");
 const {
   WORKER_HEARTBEAT_KEY,
@@ -25,6 +27,9 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Serve uploads directory statically
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/api/health", (req, res) => {
   const mongoConnected = mongoose.connection.readyState === 1;
@@ -135,6 +140,7 @@ tenantApiRouter.use("/admin", adminRoutes);
 tenantApiRouter.use("/tests", testRoutes);
 tenantApiRouter.use("/results", resultRoutes);
 tenantApiRouter.use("/timetable", timetableRoutes);
+tenantApiRouter.use("/events", eventRoutes);
 
 app.use("/api/t/:tenantSlug", tenantApiRouter);
 
