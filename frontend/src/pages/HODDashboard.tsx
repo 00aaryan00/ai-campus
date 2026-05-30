@@ -11,6 +11,7 @@ import {
 } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
+import { Briefcase, BarChart3, TrendingUp, MailX, DoorOpen, Calendar, Users, Building } from "lucide-react";
 
 type HODData = {
   name: string;
@@ -161,7 +162,7 @@ export default function HODDashboard() {
         </h1>
 
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
-          Welcome HOD {displayName} 👋 | {hodMeta}
+          Welcome HOD {displayName} | {hodMeta}
         </p>
       </div>
 
@@ -176,8 +177,8 @@ export default function HODDashboard() {
             <DayStatusCard />
 
             <div className={card}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Departments 🏢
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Departments <Building size={18} />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
                 {data.departments}
@@ -185,8 +186,8 @@ export default function HODDashboard() {
             </div>
 
             <div className={card}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Faculty 👨‍🏫
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Faculty <Users size={18} />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
                 {data.faculty}
@@ -194,8 +195,8 @@ export default function HODDashboard() {
             </div>
 
             <div className={card}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Reports 📊
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Reports <BarChart3 size={18} />
               </p>
               <h2 className="mt-2 text-4xl font-black text-gold-600 dark:text-blue-400">
                 {data.reports}
@@ -203,8 +204,8 @@ export default function HODDashboard() {
             </div>
 
             <div className={card}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Avg Score 📈
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Avg Score <TrendingUp size={18} />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
                 {data.averageScore}%
@@ -272,8 +273,8 @@ export default function HODDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-slate-500 dark:text-slate-400">
-                No pending leave requests for {selectedBranch.toUpperCase()} 📭
+              <p className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                <MailX size={18} /> No pending leave requests for {selectedBranch.toUpperCase()}
               </p>
             )}
           </div>

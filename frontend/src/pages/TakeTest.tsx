@@ -4,9 +4,11 @@ import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 
 import MainLayout from "../layout/MainLayout";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { resultApi, testApi } from "../services/api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Moon, Sun, LogOut, AlertTriangle, Trophy } from "lucide-react";
 
 type LobbyTest = {
   _id: string;
@@ -32,6 +34,7 @@ const buildDraftKey = (testId: string) => `test-draft-${testId}`;
 
 export default function TakeTest() {
   const { token, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
@@ -461,7 +464,7 @@ export default function TakeTest() {
   // 1) ACTIVE TEST VIEW
   if (questions.length > 0 && currentQuestionData) {
     return (
-      <div className="min-h-screen w-full bg-[#160028] text-white select-none">
+      <div className="min-h-screen w-full bg-slate-50 dark:bg-[#160028] text-slate-900 dark:text-white select-none transition-colors duration-300">
         
         {/* Security Violation Overlay */}
         {showViolationOverlay && (
@@ -499,7 +502,7 @@ export default function TakeTest() {
 
         <div className="grid grid-rows-[auto_1fr] min-h-screen">
           {/* HEADER */}
-          <div className="px-6 py-4 border-b border-purple-700 bg-[#1b0730]">
+          <div className="px-6 py-4 border-b border-slate-200 dark:border-purple-700 bg-white dark:bg-[#1b0730] transition-colors duration-300">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
                 <div className="w-16 h-16 rounded bg-white overflow-hidden border border-gray-300 shrink-0">
@@ -510,46 +513,53 @@ export default function TakeTest() {
                   />
                 </div>
                 <div className="leading-6 truncate">
-                  <p className="text-xl font-bold truncate">
-                    Candidate: <span className="text-pink-400">{user?.name || "Student"}</span>
+                  <p className="text-xl font-bold truncate text-slate-900 dark:text-white">
+                    Candidate: <span className="text-purple-600 dark:text-pink-400">{user?.name || "Student"}</span>
                   </p>
-                  <p className="text-sm text-gray-300 truncate">
+                  <p className="text-sm text-slate-500 dark:text-gray-300 truncate">
                     {user?.email || "student@gmail.com"}
                   </p>
-                  <p className="text-sm text-gray-300 truncate">
-                    Exam: <span className="text-pink-400">{lobby?.title}</span> • Subject:{" "}
-                    <span className="text-pink-400">{lobby?.subject}</span>
+                  <p className="text-sm text-slate-500 dark:text-gray-300 truncate">
+                    Exam: <span className="text-purple-600 dark:text-pink-400">{lobby?.title}</span> • Subject:{" "}
+                    <span className="text-purple-600 dark:text-pink-400">{lobby?.subject}</span>
                   </p>
                 </div>
               </div>
 
               {/* Timer metrics display */}
               <div className="text-center">
-                <p className="text-xs uppercase tracking-wider text-gray-300">Time Left</p>
-                <p className="text-2xl font-extrabold text-fuchsia-400 tabular-nums">
+                <p className="text-xs uppercase tracking-wider text-slate-500 dark:text-gray-300">Time Left</p>
+                <p className="text-2xl font-extrabold text-purple-600 dark:text-fuchsia-400 tabular-nums">
                   {timerText}
                 </p>
                 {hasResumedAttempt && (
-                  <p className="text-[11px] text-amber-300 mt-1">Resumed attempt</p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-300 mt-1">Resumed attempt</p>
                 )}
                 {!!message && (
-                  <p className="text-[11px] text-emerald-300 mt-1 truncate max-w-[260px]">
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-300 mt-1 truncate max-w-[260px]">
                     {message}
                   </p>
                 )}
                 {!!error && (
-                  <p className="text-[11px] text-rose-300 mt-1 truncate max-w-[260px]">
+                  <p className="text-[11px] text-rose-600 dark:text-rose-300 mt-1 truncate max-w-[260px]">
                     {error}
                   </p>
                 )}
               </div>
 
-              <div className="flex items-center">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={toggleTheme}
+                  title="Toggle Theme"
+                  className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 transition"
+                >
+                  {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+                </button>
                 <button
                   onClick={handleLogout}
-                  className="bg-[#2b103d] px-5 py-2 rounded-xl font-semibold text-orange-300 hover:bg-[#3a1452] transition"
+                  className="flex items-center gap-2 bg-orange-50 px-5 py-2 rounded-xl font-semibold text-orange-600 hover:bg-orange-100 dark:bg-[#2b103d] dark:text-orange-300 dark:hover:bg-[#3a1452] transition"
                 >
-                  🚪 Logout
+                  <LogOut size={18} /> Logout
                 </button>
               </div>
             </div>
@@ -559,17 +569,17 @@ export default function TakeTest() {
           <div className="grid md:grid-cols-[1fr_minmax(300px,360px)] gap-6 h-full px-6 py-5">
             {/* LEFT QUESTION WRAPPER */}
             <div className="min-h-0">
-              <div className="bg-[#22092f] border border-purple-700 rounded-2xl p-6 h-full">
+              <div className="bg-white dark:bg-[#22092f] border border-slate-200 dark:border-purple-700 rounded-2xl p-6 h-full shadow-sm transition-colors duration-300">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <h2 className="text-2xl md:text-3xl font-bold">
                     Question {currentQuestion + 1} of {questions.length}
                   </h2>
-                  <span className="text-yellow-300 font-semibold">
+                  <span className="text-amber-600 dark:text-yellow-300 font-semibold">
                     Marks: {currentQuestionData.marks}
                   </span>
                 </div>
 
-                <div className="prose prose-invert prose-lg md:prose-xl max-w-none text-gray-200 mb-6 font-medium leading-8">
+                <div className="prose dark:prose-invert prose-lg md:prose-xl max-w-none text-slate-800 dark:text-gray-200 mb-6 font-medium leading-8 transition-colors duration-300">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentQuestionData.questionText}</ReactMarkdown>
                 </div>
 
@@ -577,12 +587,12 @@ export default function TakeTest() {
                   {currentQuestionData.options.map((option) => (
                     <label
                       key={option}
-                      className="flex items-center gap-4 border border-purple-700 p-4 rounded-xl cursor-pointer hover:bg-purple-900"
+                      className="flex items-center gap-4 border border-slate-200 dark:border-purple-700 p-4 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-purple-900 transition-colors duration-300"
                     >
                       <input
                         type="radio"
                         name={currentQuestionData._id}
-                        className="accent-fuchsia-500 w-5 h-5"
+                        className="accent-purple-600 dark:accent-fuchsia-500 w-5 h-5"
                         checked={answers[currentQuestionData._id] === option}
                         onChange={() =>
                           setAnswers((prev) => ({
@@ -591,7 +601,7 @@ export default function TakeTest() {
                           }))
                         }
                       />
-                      <span className="text-lg prose prose-invert prose-p:my-0 prose-pre:my-0 max-w-none">
+                      <span className="text-lg prose dark:prose-invert prose-p:my-0 prose-pre:my-0 max-w-none text-slate-700 dark:text-gray-200">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{option}</ReactMarkdown>
                       </span>
                     </label>
@@ -603,7 +613,7 @@ export default function TakeTest() {
                   <button
                     onClick={() => goToIndex(currentQuestion - 1)}
                     disabled={currentQuestion === 0}
-                    className="bg-slate-600 disabled:opacity-50 px-5 py-3 rounded-xl font-bold text-base"
+                    className="bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-white disabled:opacity-50 px-5 py-3 rounded-xl font-bold text-base transition-colors duration-300"
                   >
                     ← Prev
                   </button>
@@ -679,7 +689,7 @@ export default function TakeTest() {
                   <button
                     onClick={() => goToIndex(currentQuestion + 1)}
                     disabled={currentQuestion === questions.length - 1}
-                    className="bg-slate-600 disabled:opacity-50 px-5 py-3 rounded-xl font-bold text-base"
+                    className="bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-white disabled:opacity-50 px-5 py-3 rounded-xl font-bold text-base transition-colors duration-300"
                   >
                     Next →
                   </button>
@@ -700,39 +710,39 @@ export default function TakeTest() {
             </div>
 
             {/* RIGHT STATUS SIDEBAR */}
-            <aside className="min-h-0">
-              <div className="bg-[#22092f] border border-purple-700 rounded-2xl h-full flex flex-col">
-                <div className="p-5 border-b border-purple-700">
-                  <h3 className="text-2xl font-bold text-fuchsia-400">Questions</h3>
+            <aside className="h-[400px] md:h-full flex flex-col min-h-0">
+              <div className="bg-white dark:bg-[#22092f] border border-slate-200 dark:border-purple-700 rounded-2xl h-full flex flex-col shadow-sm transition-colors duration-300">
+                <div className="p-5 border-b border-slate-200 dark:border-purple-700">
+                  <h3 className="text-2xl font-bold text-purple-600 dark:text-fuchsia-400">Questions</h3>
                 </div>
 
-                <div className="p-5 space-y-4 border-b border-purple-700">
+                <div className="p-5 space-y-4 border-b border-slate-200 dark:border-purple-700">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded text-black flex items-center justify-center font-bold text-xl">
+                    <div className="w-12 h-12 bg-slate-100 dark:bg-gray-200 rounded text-slate-700 dark:text-black flex items-center justify-center font-bold text-xl">
                       {notVisitedCount}
                     </div>
-                    <span className="text-lg font-bold">Not Visited</span>
+                    <span className="text-lg font-bold text-slate-800 dark:text-white">Not Visited</span>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-red-500 rounded text-white flex items-center justify-center font-bold text-xl">
                       {notAnsweredCount}
                     </div>
-                    <span className="text-lg font-bold">Not Answered</span>
+                    <span className="text-lg font-bold text-slate-800 dark:text-white">Not Answered</span>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-green-500 rounded text-white flex items-center justify-center font-bold text-xl">
                       {answeredCount}
                     </div>
-                    <span className="text-lg font-bold">Answered</span>
+                    <span className="text-lg font-bold text-slate-800 dark:text-white">Answered</span>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-purple-600 rounded-full text-white flex items-center justify-center font-bold text-xl">
                       {reviewedCount}
                     </div>
-                    <span className="text-lg font-bold">Marked For Review</span>
+                    <span className="text-lg font-bold text-slate-800 dark:text-white">Marked For Review</span>
                   </div>
 
                   <div className="flex items-center gap-4">
@@ -759,7 +769,7 @@ export default function TakeTest() {
                       const base =
                         "h-12 rounded-xl text-lg font-bold transition-all flex items-center justify-center";
 
-                      let classes = "bg-gray-200 text-black";
+                      let classes = "bg-slate-100 text-slate-700 dark:bg-gray-200 dark:text-black";
                       let style: React.CSSProperties = {};
 
                       if (isReviewed && isAnswered) {
@@ -777,7 +787,7 @@ export default function TakeTest() {
 
                       const isActive = currentQuestion === index;
                       if (isActive) {
-                        classes += " ring-2 ring-offset-2 ring-fuchsia-400 ring-offset-[#22092f]";
+                        classes += " ring-2 ring-offset-2 ring-fuchsia-400 ring-offset-white dark:ring-offset-[#22092f]";
                       }
 
                       return (
@@ -807,35 +817,37 @@ export default function TakeTest() {
   if (!lobby && questions.length === 0 && !summary) {
     return (
       <MainLayout>
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="glass p-8 rounded-3xl mt-10">
-            <h1 className="text-5xl font-bold text-white mb-10">Exams & Attempts</h1>
+        <div className="max-w-4xl mx-auto px-4 mt-12 mb-20">
+          <div className="text-center mb-10">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Exam Portal
+            </h1>
+            <p className="text-slate-500 dark:text-gray-400 mt-3 text-lg">Securely join your assigned test sessions.</p>
+            {error && <p className="text-rose-600 dark:text-rose-400 font-medium mt-4 bg-rose-50 dark:bg-rose-900/20 py-2 px-4 rounded-xl inline-block">{error}</p>}
+            {message && <p className="text-emerald-600 dark:text-emerald-400 font-medium mt-4 bg-emerald-50 dark:bg-emerald-900/20 py-2 px-4 rounded-xl inline-block">{message}</p>}
+          </div>
 
-            {error && <p className="text-rose-500 font-semibold mb-4">{error}</p>}
-            {message && <p className="text-emerald-500 font-semibold mb-4">{message}</p>}
+          <div className="relative rounded-3xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-[#1c0b2b]/90 backdrop-blur-xl p-8 md:p-12 shadow-sm transition-colors duration-300">
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white mb-3">Join Exam via Code</h2>
+            <p className="text-slate-600 dark:text-gray-300 mb-8 text-base">
+              Enter the unique access code provided by your instructor to begin.
+            </p>
 
-            <div className="rounded-3xl border border-purple-800 bg-[#22092f] p-10">
-              <h2 className="text-3xl font-bold text-fuchsia-400 mb-4">Join Exam via Code</h2>
-              <p className="text-gray-300 mb-8">
-                Enter the unique code provided by your teacher.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <input
-                  type="text"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="E.G. A9B2C3"
-                  className="flex-1 p-5 rounded-2xl bg-[#2d1240] border border-purple-700 text-white outline-none"
-                />
-                <button
-                  onClick={joinExam}
-                  disabled={loading}
-                  className="bg-gradient-to-r from-purple-500 to-fuchsia-500 px-10 py-4 rounded-2xl font-bold text-white disabled:opacity-70"
-                >
-                  {loading ? "Joining..." : "Access Exam"}
-                </button>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="text"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                placeholder="E.G. A9B2C3"
+                className="flex-1 p-4 text-lg font-mono tracking-widest rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+              />
+              <button
+                onClick={joinExam}
+                disabled={loading}
+                className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500 px-8 py-4 rounded-xl font-medium text-white shadow-sm transition-all disabled:opacity-70 disabled:grayscale"
+              >
+                {loading ? "Verifying..." : "Access Exam"}
+              </button>
             </div>
           </div>
         </div>
@@ -846,37 +858,46 @@ export default function TakeTest() {
   if (lobby && questions.length === 0 && !summary) {
     return (
       <MainLayout>
-        <div className="max-w-4xl mx-auto mt-10 px-4">
-          <div className="glass p-8 rounded-3xl">
-            <div className="space-y-4 text-lg">
-              <p>
-                <span className="font-bold">Subject:</span> {lobby.subject}
-              </p>
-              <p>
-                <span className="font-bold">Mode:</span> {lobby.mode}
-              </p>
-              <p>
-                <span className="font-bold">Questions:</span> {lobby.questionCount}
-              </p>
-              <p>
-                <span className="font-bold">Total Marks:</span> {lobby.totalMarks}
-              </p>
-              <p>
-                <span className="font-bold">Duration:</span> {lobby.duration} minutes
-              </p>
+        <div className="max-w-4xl mx-auto mt-12 px-4 mb-20">
+          <div className="relative bg-white/90 dark:bg-[#1c0b2b]/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-8 md:p-10 rounded-3xl shadow-sm transition-colors duration-300">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-6 border-b border-slate-200 dark:border-white/10 pb-5">
+              {lobby.title}
+            </h1>
 
-              <div className="bg-[#22092f] p-5 rounded-2xl border border-purple-700">
-                <span className="font-bold">Instructions:</span>{" "}
-                {lobby.instructions || "No instructions provided."}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 text-base mb-8">
+              <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5 transition-colors duration-300">
+                <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Subject</p>
+                <p className="font-semibold text-slate-900 dark:text-white truncate" title={lobby.subject}>{lobby.subject}</p>
               </div>
+              <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5 transition-colors duration-300">
+                <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Mode</p>
+                <p className="font-semibold text-slate-900 dark:text-white capitalize">{lobby.mode}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5 transition-colors duration-300">
+                <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Questions</p>
+                <p className="font-semibold text-purple-600 dark:text-fuchsia-400">{lobby.questionCount}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-black/20 p-4 rounded-xl border border-slate-100 dark:border-white/5 transition-colors duration-300">
+                <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400 uppercase tracking-wider font-semibold mb-1">Duration</p>
+                <p className="font-semibold text-blue-600 dark:text-blue-400">{lobby.duration} min</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-xl border border-amber-200 dark:border-amber-500/20 mb-8 transition-colors duration-300">
+              <span className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-400 mb-2">
+                <AlertTriangle size={20} /> Instructions
+              </span>
+              <p className="text-amber-900 dark:text-amber-200/80 leading-relaxed text-sm">
+                {lobby.instructions || "Please read all questions carefully before answering. Do not refresh the page during the exam."}
+              </p>
             </div>
 
             <button
               onClick={startExam}
               disabled={loading}
-              className="mt-8 bg-gradient-to-r from-purple-500 to-fuchsia-500 px-10 py-4 rounded-2xl font-bold text-white disabled:opacity-70"
+              className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 py-4 rounded-xl font-semibold text-white text-lg shadow-sm transition-all disabled:opacity-70 disabled:grayscale"
             >
-              {loading ? "Starting..." : "Start Test"}
+              {loading ? "Preparing Environment..." : "Start Test"}
             </button>
           </div>
         </div>
@@ -888,26 +909,40 @@ export default function TakeTest() {
   if (summary) {
     return (
       <MainLayout>
-        <div className="max-w-3xl mx-auto mt-10 px-4">
-          <div className="glass p-10 rounded-3xl text-center">
-            <h1 className="text-5xl font-bold text-fuchsia-400 mb-10">Exam Completed</h1>
-
-            <div className="space-y-6 text-2xl">
-              <p>
-                Score :
-                <span className="text-green-400 ml-3">{summary.score}</span>
-              </p>
-
-              <p>
-                Total Marks :
-                <span className="text-yellow-400 ml-3">{summary.totalMarks}</span>
-              </p>
-
-              <p>
-                Accuracy :
-                <span className="text-pink-400 ml-3">{summary.accuracy}%</span>
-              </p>
+        <div className="max-w-3xl mx-auto mt-12 px-4 mb-20">
+          <div className="relative bg-white/90 dark:bg-[#1c0b2b]/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 p-10 md:p-12 rounded-3xl shadow-sm text-center transition-colors duration-300">
+            
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 dark:text-green-400">
+              <Trophy size={40} />
             </div>
+
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-8 tracking-tight">
+              Exam Completed
+            </h1>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+              <div className="bg-slate-50 dark:bg-black/20 p-6 rounded-2xl border border-slate-200 dark:border-white/5 transition-colors duration-300">
+                <p className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-1">Score</p>
+                <p className="text-3xl font-bold text-green-600 dark:text-green-400">{summary.score}</p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-black/20 p-6 rounded-2xl border border-slate-200 dark:border-white/5 transition-colors duration-300">
+                <p className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-1">Total</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white">{summary.totalMarks}</p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-black/20 p-6 rounded-2xl border border-slate-200 dark:border-white/5 transition-colors duration-300">
+                <p className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-1">Accuracy</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-white">{summary.accuracy}%</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate("/student/dashboard")}
+              className="mt-10 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/20 px-8 py-3 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-white/20 transition-colors shadow-sm"
+            >
+              Return to Dashboard
+            </button>
           </div>
         </div>
       </MainLayout>

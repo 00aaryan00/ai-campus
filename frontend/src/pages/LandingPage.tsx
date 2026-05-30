@@ -5,6 +5,11 @@ import { useEffect, useRef, useState } from 'react';
 
 import styles from './Landing.module.css';
 import logo from "../assets/logo.png";
+import { 
+  Sun, Moon, BarChart3, Trophy, Target, TrendingUp, Brain, Bot, 
+  FileText, GraduationCap, Zap, CheckCircle, Calendar, Users, Timer,
+  ShieldCheck, EyeOff, Clock, Send
+} from 'lucide-react';
 
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
@@ -157,7 +162,7 @@ export default function LandingPage() {
           <a href="#insights" className={styles.navLink}>Insights</a>
           <a href="#workflow" className={styles.navLink}>Workflow</a>
           <button id="theme-toggle" onClick={toggleTheme} className={styles.themeToggle} title="Toggle theme">
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
           <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-secondary']}`}>Log in</Link>
           <Link to="/tenant-access" className={`${styles.btn} ${styles['btn-primary']}`}>Get Started</Link>
@@ -208,7 +213,7 @@ export default function LandingPage() {
         >
           <div className={styles.scene3d}>
             <div className={`${styles.floatCard} ${styles.floatCard1}`}>
-              <div className={styles.floatCardHeader}><span>📊</span> Attendance Tracker</div>
+              <div className={styles.floatCardHeader}><span className="flex items-center"><BarChart3 size={18} className="text-blue-500 mr-2" /></span> Attendance Tracker</div>
               <p className={styles.floatCardText}>87% attendance today across 6 classes</p>
               <div className={styles.floatCardProgress}>
                 <div className={styles.floatCardProgressFill} style={{ width: '87%' }} />
@@ -220,7 +225,7 @@ export default function LandingPage() {
             </div>
 
             <div className={`${styles.floatCard} ${styles.floatCard2}`}>
-              <div className={styles.floatCardHeader}><span>📊</span> Class Analytics</div>
+              <div className={styles.floatCardHeader}><span className="flex items-center"><BarChart3 size={18} className="text-purple-500 mr-2" /></span> Class Analytics</div>
               <div className={styles.floatCardStat}>
                 <span className={styles.floatCardStatNum}>87%</span>
                 <span className={styles.floatCardStatLabel}>Avg Score</span>
@@ -233,7 +238,7 @@ export default function LandingPage() {
             </div>
 
             <div className={`${styles.floatCard} ${styles.floatCard3}`}>
-              <div className={styles.floatCardHeader}><span>⏱️</span> Live Test</div>
+              <div className={styles.floatCardHeader}><span className="flex items-center"><Timer size={18} className="text-red-500 mr-2" /></span> Live Test</div>
               <div className={styles.liveIndicator}><span className={styles.liveDot} />LIVE</div>
               <p className={styles.floatCardText}>24 students taking test now</p>
               <div className={styles.studentAvatars}>
@@ -245,7 +250,7 @@ export default function LandingPage() {
             </div>
 
             <div className={`${styles.floatCard} ${styles.floatCard4}`}>
-              <div className={styles.floatCardHeader}><span>🏆</span> Top Student</div>
+              <div className={styles.floatCardHeader}><span className="flex items-center"><Trophy size={18} className="text-yellow-500 mr-2" /></span> Top Student</div>
               <p className={styles.floatCardText}>Sarah K. — 98/100</p>
               <span className={styles.rankBadge}>🥇 #1</span>
             </div>
@@ -261,28 +266,30 @@ export default function LandingPage() {
           </h2>
           <p className={styles.sectionSubtitle}>Built for modern educators and learners</p>
         </div>
-        <div className={styles.featuresGrid}>
-          {features.map((f, i) => (
-            <div
-              key={i}
-              className={`${styles.featureCardWrap} ${styles.reveal}`}
-              style={{ transitionDelay: `${i * 0.07}s` }}
-            >
-              <div className={styles.featureCard}>
-                <div className={styles.featureCardFront}>
-                  <div className={styles.featureIconBg}>{f.icon}</div>
-                  <h3 className={styles.featureTitle}>{f.title}</h3>
-                  <span className={styles.featureTag}>{f.tag}</span>
-                </div>
-                <div className={styles.featureCardBack}>
-                  <div className={styles.featureIconBg}>{f.icon}</div>
-                  <h3 className={styles.featureTitle}>{f.title}</h3>
-                  <p className={styles.featureText}>{f.text}</p>
-                  <span className={styles.featureTag}>{f.tag}</span>
+        <div className={styles.featuresMarqueeWrapper}>
+          <div className={styles.featuresMarqueeTrack}>
+            {[...features, ...features].map((f, i) => (
+              <div
+                key={i}
+                className={`${styles.featureCardWrap} ${styles.marqueeCard} ${styles.reveal}`}
+                style={{ transitionDelay: `${(i % features.length) * 0.07}s` }}
+              >
+                <div className={styles.featureCard}>
+                  <div className={styles.featureCardFront}>
+                    <div className={styles.featureIconBg}>{f.icon}</div>
+                    <h3 className={styles.featureTitle}>{f.title}</h3>
+                    <span className={styles.featureTag}>{f.tag}</span>
+                  </div>
+                  <div className={styles.featureCardBack}>
+                    <div className={styles.featureIconBg}>{f.icon}</div>
+                    <h3 className={styles.featureTitle}>{f.title}</h3>
+                    <p className={styles.featureText}>{f.text}</p>
+                    <span className={styles.featureTag}>{f.tag}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -367,42 +374,38 @@ export default function LandingPage() {
         <div className={styles.workflowContainer}>
           <div className={`${styles.workflowVisual} ${styles.reveal}`}>
             <div className={styles.orbitRing}>
-              <div className={styles.orbitIcon} style={{ '--i': 0 } as React.CSSProperties}>📊</div>
-              <div className={styles.orbitIcon} style={{ '--i': 1 } as React.CSSProperties}>🤖</div>
-              <div className={styles.orbitIcon} style={{ '--i': 2 } as React.CSSProperties}>📝</div>
-              <div className={styles.orbitIcon} style={{ '--i': 3 } as React.CSSProperties}>🎓</div>
-              <div className={styles.orbitIcon} style={{ '--i': 4 } as React.CSSProperties}>🔐</div>
-              <div className={styles.orbitIcon} style={{ '--i': 5 } as React.CSSProperties}>⏱️</div>
+              <div className={styles.orbitIcon} style={{ '--i': 0 } as React.CSSProperties}><BarChart3 size={20} className="text-blue-500" /></div>
+              <div className={styles.orbitIcon} style={{ '--i': 1 } as React.CSSProperties}><Bot size={20} className="text-emerald-500" /></div>
+              <div className={styles.orbitIcon} style={{ '--i': 2 } as React.CSSProperties}><FileText size={20} className="text-orange-500" /></div>
+              <div className={styles.orbitIcon} style={{ '--i': 3 } as React.CSSProperties}><GraduationCap size={20} className="text-fuchsia-500" /></div>
+              <div className={styles.orbitIcon} style={{ '--i': 4 } as React.CSSProperties}><Target size={20} className="text-indigo-500" /></div>
+              <div className={styles.orbitIcon} style={{ '--i': 5 } as React.CSSProperties}><Timer size={20} className="text-rose-500" /></div>
             </div>
             <div className={styles.orbitCenter}>
-              {/* <img src={logo} alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'contain' }} /> */}
-
               <img
-  src={logo}
-  alt="AI Classroom Logo"
-  style={{
-    width: '36px',
-    height: '36px',
-    background: '#fff',
-    borderRadius: '8px',
-    padding: '2px',
-    objectFit: 'cover'
-  }}
-/>
+                src={logo}
+                alt="AI Classroom Logo"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  background: '#fff',
+                  borderRadius: '8px',
+                  padding: '2px',
+                  objectFit: 'cover'
+                }}
+              />
             </div>
           </div>
           <div className={`${styles.workflowContent} ${styles.reveal}`}>
-            <div className={styles.heroBadge}>⚡ Seamless Workflow</div>
-            <h2 className={styles.sectionTitle}>
-              <span className={styles.gradientText}>Integrate</span> with your<br/>Teaching Workflow
-            </h2>
-            <p className={styles.aboutText}>
-              Easily connect AI Classroom with your existing tools for a seamless experience.
+            <div className={styles.heroBadge}><span className="flex items-center"><Zap size={16} className="text-yellow-500 mr-2" /> Seamless Workflow</span></div>
+            <h2 className={styles.sectionTitle}>Built for the Modern Classroom</h2>
+            <p className={styles.sectionSubtitle}>
+              Integrates with your existing tools. Manage attendance, generate exams, and analyze data all in one place.
             </p>
-            <ul className={styles.aboutList}>
-              <li>✅ Works with Google Classroom &amp; LMS platforms</li>
-              <li>✅ Export results as PDF or CSV instantly</li>
-              <li>✅ Sync student data across all dashboards</li>
+            <ul className={styles.workflowList}>
+              <li className="flex items-center"><CheckCircle size={18} className="text-green-500 mr-2" /> Works with Google Classroom & LMS platforms</li>
+              <li className="flex items-center"><CheckCircle size={18} className="text-green-500 mr-2" /> Export results as PDF or CSV instantly</li>
+              <li className="flex items-center"><CheckCircle size={18} className="text-green-500 mr-2" /> Sync student data across all dashboards</li>
             </ul>
           </div>
         </div>
@@ -436,8 +439,6 @@ export default function LandingPage() {
         <div className={styles.footerTop}>
           <div className={styles.footerBrand}>
             <div className={styles.footerBrandLogo}>
-
-
               <img src={logo} alt="Logo" style={{ width: '36px', height: '36px', background: '#fff', borderRadius: '8px', padding: '2px', objectFit: 'contain' }} />
               <span className={styles.fontDisplay}>AI Classroom</span>
             </div>
@@ -485,14 +486,16 @@ export default function LandingPage() {
 }
 
 const features = [
-  { icon: '🤖', title: 'AI Question Generation', text: 'Instantly generate MCQs and short-answer questions from any lecture content using Gemini AI.', tag: 'Powered by Gemini' },
-  { icon: '🎲', title: 'Unique Test Sets', text: 'Every student receives a different, randomized question set — eliminating cheating at scale.', tag: 'Anti-Cheat' },
-  { icon: '📊', title: 'Real-time Analytics', text: 'Track class performance, topic mastery, and submission trends with live dashboards.', tag: 'Live Data' },
-  { icon: '⏱️', title: 'Timed Assessments', text: 'Set time limits, detect tab switching, and flag suspicious behaviour automatically.', tag: 'Proctored' },
-  { icon: '🔐', title: 'Role-Based Access', text: 'Separate dashboards for Admins, Teachers, and Students with secure JWT authentication.', tag: 'Secure' },
-  { icon: '📱', title: 'Fully Responsive', text: 'Works seamlessly across desktop, tablet, and mobile devices with a polished UI.', tag: 'Mobile-First' },
-  { icon: '📅', title: 'Attendance Recording', text: 'Automatically track and monitor student attendance for every lecture with real-time percentage updates.', tag: 'Auto-Track' },
-  { icon: '✨', title: 'No Internal Marks Stress', text: 'Continuous AI-based evaluation removes the pressure of internal marks — performance is tracked automatically.', tag: 'AI Evaluated' },
+  { icon: <Bot size={32} className="text-purple-500 mb-4" />, title: 'AI Question Generation', text: 'Instantly generate MCQs and short-answer questions from any lecture content using Gemini AI.', tag: 'Powered by Gemini' },
+  { icon: <Target size={32} className="text-blue-500 mb-4" />, title: 'Smart Evaluation', text: 'Automatically grade exams and assignments with detailed feedback and plagiarism checks.', tag: 'Instant Grading' },
+  { icon: <EyeOff size={32} className="text-rose-500 mb-4" />, title: 'Anti-Cheat Proctoring', text: 'Secure exam environment with tab-switch detection, randomized question sets, and real-time monitoring.', tag: 'Secure' },
+  { icon: <BarChart3 size={32} className="text-emerald-500 mb-4" />, title: 'Real-time Analytics', text: 'Track class performance, topic mastery, and submission trends with live dashboards.', tag: 'Live Data' },
+  { icon: <Brain size={32} className="text-fuchsia-500 mb-4" />, title: 'Personalized Insights', text: 'Identify at-risk students and recommend targeted resources based on learning patterns.', tag: 'Adaptive' },
+  { icon: <Bot size={32} className="text-orange-500 mb-4" />, title: '24/7 AI Tutor', text: 'Students get on-demand help with concepts, coding problems, and exam prep from our AI assistant.', tag: 'Always Available' },
+  { icon: <Calendar size={32} className="text-cyan-500 mb-4" />, title: 'Attendance Recording', text: 'Automatically track and monitor student attendance for every lecture with real-time percentage updates.', tag: 'Auto-Track' },
+  { icon: <ShieldCheck size={32} className="text-indigo-500 mb-4" />, title: 'Role-Based Access', text: 'Dedicated, isolated portals for Admins, HODs, Faculty, and Students with JWT authentication.', tag: 'Enterprise' },
+  { icon: <Send size={32} className="text-amber-500 mb-4" />, title: 'Smart Leave Management', text: 'Digital leave application system with real-time tracking, teacher monitoring, and automatic approvals.', tag: 'Paperless' },
+  { icon: <Clock size={32} className="text-teal-500 mb-4" />, title: 'Dynamic Scheduling', text: 'Live department timetables, event management, and automatic smart alerts for upcoming classes.', tag: 'Organized' },
 ];
 
 const steps = [

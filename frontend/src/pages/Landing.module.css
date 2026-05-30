@@ -813,6 +813,38 @@ input, textarea, select { font-family: inherit; outline: none; }
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px; max-width: 1100px; margin: 0 auto;
 }
+
+/* ── Marquee Animation classes ── */
+.featuresMarqueeWrapper {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  padding: 20px 0;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.featuresMarqueeTrack {
+  display: flex;
+  width: max-content;
+  gap: 24px;
+  animation: scrollMarquee 40s linear infinite;
+  padding: 0 12px;
+}
+
+.featuresMarqueeTrack:hover {
+  animation-play-state: paused;
+}
+
+@keyframes scrollMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 12px)); } /* 12px is half of 24px gap */
+}
+
+.marqueeCard {
+  width: 340px;
+  flex-shrink: 0;
+}
 .featureCardWrap {
   perspective: 1200px;
   position: relative;

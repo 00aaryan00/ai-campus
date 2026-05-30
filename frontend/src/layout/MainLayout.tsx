@@ -4,6 +4,18 @@ import { useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/logo.png";
+import { 
+  LayoutDashboard, 
+  BookOpen, 
+  CheckCircle, 
+  FileText, 
+  FlaskConical, 
+  TrendingUp, 
+  Bell, 
+  CalendarDays,
+  Calendar,
+  AlertTriangle 
+} from "lucide-react";
 
 
 type MainLayoutProps = {
@@ -12,40 +24,40 @@ type MainLayoutProps = {
 
 const roleTabs = {
   student: [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "classes", label: "Classes", icon: "📚" },
-    { id: "attendance", label: "Attendance", icon: "📈" },
-    { id: "leave", label: "Leave Application", icon: "📝" },
-    { id: "exams", label: "Exams", icon: "🧪" },
-    { id: "performance", label: "Performance", icon: "🏆" },
-    { id: "notifications", label: "Notifications", icon: "🔔" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
+    { id: "classes", label: "Classes", icon: <BookOpen size={20} /> },
+    { id: "attendance", label: "Attendance", icon: <CheckCircle size={20} /> },
+    { id: "leave", label: "Leave Application", icon: <FileText size={20} /> },
+    { id: "exams", label: "Exams", icon: <FlaskConical size={20} /> },
+    { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
   ],
   faculty: [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "classes", label: "Classes", icon: "📚" },
-    { id: "leaves", label: "Leave Requests", icon: "📝" },
-    { id: "attendance", label: "Attendance", icon: "✅" },
-    { id: "exams", label: "Create Exam", icon: "🧪" },
-    { id: "performance", label: "Performance", icon: "📈" },
-    { id: "notifications", label: "Notifications", icon: "🔔" },
-    { id: "events", label: "Events", icon: "📅" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
+    { id: "classes", label: "Classes", icon: <BookOpen size={20} /> },
+    { id: "leaves", label: "Leave Requests", icon: <FileText size={20} /> },
+    { id: "attendance", label: "Attendance", icon: <CheckCircle size={20} /> },
+    { id: "exams", label: "Create Exam", icon: <FlaskConical size={20} /> },
+    { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
+    { id: "events", label: "Events", icon: <Calendar size={20} /> },
   ],
   hod: [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "leaves", label: "Leave Monitoring", icon: "📝" },
-    { id: "timetable", label: "Timetable", icon: "📚" },
-    { id: "performance", label: "Performance", icon: "📈" },
-    { id: "notifications", label: "Notifications", icon: "🔔" },
-    { id: "events", label: "Events", icon: "📅" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
+    { id: "leaves", label: "Leave Monitoring", icon: <FileText size={20} /> },
+    { id: "timetable", label: "Timetable", icon: <CalendarDays size={20} /> },
+    { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
+    { id: "events", label: "Events", icon: <Calendar size={20} /> },
   ],
   principal: [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "leaves", label: "Leave Overview", icon: "📝" },
-    { id: "timetable", label: "Timetable Upload", icon: "🗓️" },
-    { id: "alerts", label: "Smart Alerts", icon: "🚨" },
-    { id: "performance", label: "Performance", icon: "📈" },
-    { id: "notifications", label: "Notifications", icon: "🔔" },
-    { id: "events", label: "Events", icon: "📅" },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
+    { id: "leaves", label: "Leave Overview", icon: <FileText size={20} /> },
+    { id: "timetable", label: "Timetable Upload", icon: <CalendarDays size={20} /> },
+    { id: "alerts", label: "Smart Alerts", icon: <AlertTriangle size={20} /> },
+    { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
+    { id: "events", label: "Events", icon: <Calendar size={20} /> },
   ],
 };
 
@@ -125,7 +137,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
                         : "text-slate-600 hover:bg-gold-50 hover:text-slate-900 dark:text-[#94a3b8] dark:hover:bg-[#6366f1]/10 dark:hover:text-[#f1f5f9]"
                     }`}
                 >
-                  <span className="text-2xl">{tab.icon}</span>
+                  <span className="flex items-center justify-center w-6 h-6">{tab.icon}</span>
                   {tab.label}
                 </button>
               ))}

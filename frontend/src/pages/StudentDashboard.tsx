@@ -11,6 +11,7 @@ import ProgressCard from "../components/ProgressCard";
 import { applyLeave, listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
+import { TrendingUp, BookOpen, FileText, Send, MailX, CheckCircle, XCircle } from "lucide-react";
 import { resultApi, API_BASE_URL } from "../services/api";
 import StudentSemesterModal from "../components/StudentSemesterModal";
 
@@ -282,17 +283,17 @@ export default function StudentDashboard() {
             <DayStatusCard />
 
             <div className={cardClass}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Attendance 📈
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Attendance <TrendingUp size={18} className="text-emerald-500" />
               </p>
-              <h2 className="mt-2 text-4xl font-black text-gold-600 dark:text-blue-400">
+              <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
                 {data.attendance}%
               </h2>
             </div>
 
             <div className={cardClass}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Today Classes 📚
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Today Classes <BookOpen size={18} className="text-blue-500" />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
                 {todaySchedule.length}
@@ -300,8 +301,8 @@ export default function StudentDashboard() {
             </div>
 
             <div className={cardClass}>
-              <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
-                Exams Today 📝
+              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+                Exams Today <FileText size={18} className="text-purple-500" />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
                 {dayStatus.isWorkingDay ? recentAttempts.length : 0}
@@ -528,8 +529,8 @@ export default function StudentDashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-slate-500 dark:text-slate-400">
-                  No leave requests submitted yet 📭
+                <p className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                  <MailX size={18} /> No leave requests submitted yet
                 </p>
               )}
             </div>
@@ -571,9 +572,9 @@ export default function StudentDashboard() {
               </div>
 
               {examJoinMessage && (
-                <p className={`mt-4 text-sm font-bold ${examJoinMessage.type === 'success' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {examJoinMessage.type === 'success' ? '✅ ' : '❌ '}{examJoinMessage.text}
-                </p>
+                <div className={`mt-4 flex items-center gap-2 text-sm font-bold ${examJoinMessage.type === 'success' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {examJoinMessage.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />} {examJoinMessage.text}
+                </div>
               )}
             </div>
 
