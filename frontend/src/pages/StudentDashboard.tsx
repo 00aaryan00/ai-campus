@@ -11,7 +11,7 @@ import ProgressCard from "../components/ProgressCard";
 import { applyLeave, listenLeaveRequests } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
-import { TrendingUp, BookOpen, FileText, Send, MailX, CheckCircle, XCircle } from "lucide-react";
+import { TrendingUp, BookOpen, FileText, MailX, CheckCircle, XCircle } from "lucide-react";
 import { resultApi, API_BASE_URL } from "../services/api";
 import StudentSemesterModal from "../components/StudentSemesterModal";
 

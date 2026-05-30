@@ -6,8 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './Landing.module.css';
 import logo from "../assets/logo.png";
 import { 
-  Sun, Moon, BarChart3, Trophy, Target, TrendingUp, Brain, Bot, 
-  FileText, GraduationCap, Zap, CheckCircle, Calendar, Users, Timer,
+  Sun, Moon, BarChart3, Trophy, Target, Brain, Bot, 
+  FileText, GraduationCap, Zap, CheckCircle, Calendar, Timer,
   ShieldCheck, EyeOff, Clock, Send
 } from 'lucide-react';
 

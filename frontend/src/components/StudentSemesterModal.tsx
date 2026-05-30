@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../services/api";
-import { authApi } from "../services/api"; // Will need to add an endpoint or fetch directly
+
 
 export default function StudentSemesterModal() {
   const { user, token, tenantSlug, updateUser } = useAuth();

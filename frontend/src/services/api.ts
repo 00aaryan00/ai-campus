@@ -50,6 +50,7 @@ export type AuthUser = {
   email: string;
   role: BackendRole;
   department?: string;
+  semester?: string;
   enrollmentNumber?: string | null;
 };
 

@@ -1,6 +1,6 @@
 import studentImage from "../assets/student.png";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useSearchParams, useNavigate, useParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 import MainLayout from "../layout/MainLayout";
 import { useAuth } from "../context/AuthContext";

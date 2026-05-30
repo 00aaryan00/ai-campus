@@ -11,7 +11,7 @@ import {
 } from "../services/leaveServices";
 import type { LeaveRequest } from "../services/leaveServices";
 import { useAuth } from "../context/AuthContext";
-import { Briefcase, BarChart3, TrendingUp, MailX, DoorOpen, Calendar, Users, Building } from "lucide-react";
+import { BarChart3, TrendingUp, MailX, Users, Building } from "lucide-react";
 
 type HODData = {
   name: string;
