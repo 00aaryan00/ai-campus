@@ -7,7 +7,7 @@ import DayStatusCard, {
 } from "../components/DayStatusCard";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { resultApi, API_BASE_URL } from "../services/api";
+import { API_BASE_URL } from "../services/api";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
@@ -56,28 +56,7 @@ type TabType =
   | "events"
   | "notifications";
 
-const timetable: Record<string, { time: string; subject: string; class: string; type: string; room: string }[]> = {
-  Monday: [
-    { time: "9:00 AM", subject: "Mathematics", class: "Class 10-A", type: "Theory", room: "229" },
-    { time: "11:30 AM", subject: "AI Basics", class: "Class 9-B", type: "Lab", room: "116" }
-  ],
-  Tuesday: [
-    { time: "10:00 AM", subject: "Operating Systems", class: "Class 8-A", type: "Theory", room: "506" }
-  ],
-  Wednesday: [
-    { time: "9:00 AM", subject: "Mathematics Revision", class: "Class 10-A", type: "Theory", room: "229" },
-    { time: "2:00 PM", subject: "Project Review", class: "Class 10-B", type: "Lab", room: "213" }
-  ],
-  Thursday: [
-    { time: "11:00 AM", subject: "AI Basics Lab", class: "Class 9-B", type: "Lab", room: "116" }
-  ],
-  Friday: [
-    { time: "10:00 AM", subject: "Weekly Assessment", class: "Class 10-A", type: "Exam", room: "305" }
-  ],
-  Saturday: [
-    { time: "10:00 AM", subject: "Doubt Session", class: "Class 9-B", type: "Theory", room: "120" }
-  ],
-};
+
 
 const card =
   "card-hover rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl transition dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white";

@@ -40,32 +40,7 @@ type TabType =
   | "performance"
   | "notifications";
 
-const timetable: Record<string, { subject: string; teacher: string; room: string; time: string; type: string }[]> = {
-  Monday: [
-    { time: "10:00 AM", subject: "Computer Organization and Architecture", teacher: "John Doe", room: "229", type: "TH" },
-    { time: "11:00 AM", subject: "Database Management Systems", teacher: "Sarah Smith", room: "506", type: "ETH" },
-    { time: "12:00 PM", subject: "Applied Statistics", teacher: "Michael Johnson", room: "116", type: "ETH" },
-    { time: "2:00 PM", subject: "Arithmetic Problem Solving Skills", teacher: "Emily Brown", room: "213", type: "TH" }
-  ],
-  Tuesday: [
-    { time: "9:00 AM", subject: "Web Technologies", teacher: "David Lee", room: "305", type: "TH" },
-    { time: "11:00 AM", subject: "Operating Systems", teacher: "Laura White", room: "402", type: "ETH" }
-  ],
-  Wednesday: [
-    { time: "10:00 AM", subject: "Software Engineering", teacher: "Chris Green", room: "120", type: "TH" },
-    { time: "2:00 PM", subject: "Database Management Systems", teacher: "Sarah Smith", room: "506", type: "ETH" }
-  ],
-  Thursday: [
-    { time: "9:00 AM", subject: "Applied Statistics", teacher: "Michael Johnson", room: "116", type: "ETH" },
-    { time: "11:00 AM", subject: "Computer Organization and Architecture", teacher: "John Doe", room: "229", type: "TH" }
-  ],
-  Friday: [
-    { time: "10:00 AM", subject: "Arithmetic Problem Solving Skills", teacher: "Emily Brown", room: "213", type: "TH" }
-  ],
-  Saturday: [
-    { time: "9:00 AM", subject: "Project Review", teacher: "Review Panel A", room: "310", type: "LAB" }
-  ],
-};
+
 
 const cardClass =
   "card-hover rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl transition dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white";

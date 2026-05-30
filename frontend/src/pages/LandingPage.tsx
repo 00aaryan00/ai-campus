@@ -166,6 +166,9 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className={styles.hero}>
+        {/* Animated Background Watermark Logo */}
+        <img src={logo} alt="Background Watermark" className={styles.heroBgLogo} />
+        
         <div className={styles.heroContent}>
           <div className={styles.heroBadge}>✨ AI-Powered Education Platform</div>
           <h1 className={styles.heroTitle}>
