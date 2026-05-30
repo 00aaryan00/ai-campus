@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import logo from "../assets/logo.png";
+
 
 import { authApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -115,7 +117,13 @@ export default function Signup() {
     <div className="min-h-screen bg-navy-950 text-slate-100 p-4 md:p-8">
       <div className="mx-auto mb-4 flex max-w-5xl items-center justify-between rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-3">
         <Link to="/" className="flex items-center gap-2 text-slate-100">
-          <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
+          {/* <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" /> */}
+
+          <img
+  src={logo}
+  alt="AI Classroom"
+  className="w-10 h-10 rounded-lg bg-white p-1 object-contain"
+/>
           <span className="font-display font-black text-gold-500 text-xl tracking-wide">AI Classroom</span>
         </Link>
         <div className="flex items-center gap-2">
