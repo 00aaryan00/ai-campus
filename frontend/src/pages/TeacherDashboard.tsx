@@ -651,14 +651,28 @@ export default function TeacherDashboard() {
                 >
                   <p className="font-semibold">{student}</p>
 
-                  <div className="flex gap-2">
-                    <button className="rounded-xl bg-accent-emerald px-4 py-2 text-sm font-bold text-navy-900">
+                  {/* <div className="flex gap-2">
+                    <button 
+                    className="rounded-xl bg-accent-emerald px-4 py-2 text-sm font-bold text-navy-900">
                       Present
                     </button>
                     <button className="rounded-xl bg-accent-rose px-4 py-2 text-sm font-bold text-navy-900">
                       Absent
                     </button>
-                  </div>
+                  </div> */}
+                  <div className="flex gap-2">
+  <button
+    className="rounded-xl bg-green-600 hover:bg-green-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
+  >
+    Present
+  </button>
+
+  <button
+    className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
+  >
+    Absent
+  </button>
+</div>
                 </div>
               ))}
             </div>

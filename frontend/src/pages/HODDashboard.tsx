@@ -257,14 +257,17 @@ export default function HODDashboard() {
                     <div className="mt-3 flex gap-3">
                       <button
                         onClick={() => leave.id && update(leave.id, "Approved")}
-                        className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                        // className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl mr-3"
+
                       >
                         Approve
                       </button>
 
                       <button
                         onClick={() => leave.id && update(leave.id, "Rejected")}
-                        className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                        // className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl mr-3"
                       >
                         Reject
                       </button>
