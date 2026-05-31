@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { platformApi } from "../services/api";
+import logo from "../assets/logo.png";
 
 type InstitutionOption = {
   id: string;
@@ -44,10 +45,39 @@ export default function TenantEntry() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center bg-navy-950 px-4">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-8 text-slate-100 backdrop-blur">
+  <div className="min-h-screen bg-navy-950 px-4 py-8">
+    <div className="mx-auto w-full max-w-lg">
+
+      {/* Header */}
+      <div className="mb-6 w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-slate-100 backdrop-blur">
+        <div className="flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <img
+              src={logo}
+              alt="AI Classroom"
+              className="h-12 w-12 rounded-xl bg-white p-1 object-contain"
+            />
+            <span className="text-2xl font-bold">AI Classroom</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium hover:bg-white/5"
+          >
+            Back
+          </button>
+        </div>
+      </div>
+
+      {/* Existing Card */}
+      <div className="mx-auto w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-8 text-slate-100 backdrop-blur">
         <h1 className="text-2xl font-bold">Enter your institution</h1>
-        <p className="mt-2 text-slate-300">Select your institution name to continue.</p>
+
+        <p className="mt-2 text-slate-300">
+          Select your institution name to continue.
+        </p>
+
         <select
           value={tenantSlug}
           onChange={(e) => setTenantSlug(e.target.value)}
@@ -57,13 +87,22 @@ export default function TenantEntry() {
           <option value="" className="bg-navy-900 text-slate-100">
             {loading ? "Loading institutions..." : "Select institution"}
           </option>
+
           {institutions.map((institution) => (
-            <option key={institution.id} value={institution.slug} className="bg-navy-900 text-slate-100">
+            <option
+              key={institution.id}
+              value={institution.slug}
+              className="bg-navy-900 text-slate-100"
+            >
               {institution.name} ({institution.slug})
             </option>
           ))}
         </select>
-        {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
+
+        {error ? (
+          <p className="mt-3 text-sm text-rose-300">{error}</p>
+        ) : null}
+
         <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             onClick={() => proceed("login")}
@@ -72,6 +111,7 @@ export default function TenantEntry() {
           >
             Go to Login
           </button>
+
           <button
             onClick={() => proceed("signup")}
             disabled={!tenantSlug.trim()}
@@ -80,6 +120,7 @@ export default function TenantEntry() {
             Go to Signup
           </button>
         </div>
+
         <button
           onClick={() => navigate("/platform/login")}
           className="mt-3 w-full rounded-xl border border-gold-500/40 py-3 font-semibold text-gold-400 hover:bg-gold-500/10 transition"
@@ -88,5 +129,6 @@ export default function TenantEntry() {
         </button>
       </div>
     </div>
-  );
+  </div>
+);
 }
