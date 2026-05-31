@@ -1,9 +1,8 @@
 const crypto = require("crypto");
 
 const generateProvisionedPassword = () => {
-  const alphabet =
-    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*";
-  const bytes = crypto.randomBytes(14);
+  const alphabet = "0123456789";
+  const bytes = crypto.randomBytes(8);
   let password = "";
 
   for (let i = 0; i < bytes.length; i += 1) {
