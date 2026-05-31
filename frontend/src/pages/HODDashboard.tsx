@@ -5,57 +5,27 @@ import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import {
-  listenLeaveRequests,
-  updateLeaveStatus,
-} from "../services/leaveServices";
-import type { LeaveRequest } from "../services/leaveServices";
+import { leaveApi, type LeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { BarChart3, TrendingUp, MailX, Users, Building } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { eventApi, API_BASE_URL } from "../services/api";
+import { eventApi, API_BASE_URL, dashboardApi } from "../services/api";
 import type { EventItem } from "../services/api";
 
 type HODData = {
-  name: string;
-  departments: number;
+  totalStudents: number;
   faculty: number;
-  reports: number;
-  averageScore: number;
-  attendanceRate: number;
-  studentsAtRisk: number;
-  bestDepartment: string;
-  chartData: { name: string; value: number }[];
+  departments: number;
+  healthIndex: number;
+  criticalAlerts: number;
+  topDepartment: string;
 };
 
 type TabType = "dashboard" | "leaves" | "timetable" | "performance" | "events" | "notifications";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-const hodTimetable: Record<string, { time: string; subject: string; teacher: string; room: string; type: string; class: string }[]> = {
-  Monday: [
-    { time: "9:00 AM", subject: "AI Principles", teacher: "Dr. Smith", room: "229", type: "Lecture", class: "CSE-A" },
-    { time: "11:00 AM", subject: "Data Structures", teacher: "Prof. Johnson", room: "506", type: "Lab", class: "CSE-B" },
-    { time: "2:00 PM", subject: "Operating Systems", teacher: "Dr. Lee", room: "116", type: "Lecture", class: "CSE-C" }
-  ],
-  Tuesday: [
-    { time: "10:00 AM", subject: "Computer Networks", teacher: "Dr. Brown", room: "213", type: "Lecture", class: "CSE-A" },
-    { time: "12:00 PM", subject: "Database Systems", teacher: "Prof. White", room: "305", type: "Lab", class: "CSE-B" }
-  ],
-  Wednesday: [
-    { time: "9:00 AM", subject: "Machine Learning", teacher: "Dr. Green", room: "402", type: "Lecture", class: "CSE-C" },
-    { time: "1:00 PM", subject: "Cloud Computing", teacher: "Prof. Black", room: "120", type: "Lecture", class: "CSE-A" }
-  ],
-  Thursday: [
-    { time: "11:00 AM", subject: "Software Engineering", teacher: "Dr. Gray", room: "229", type: "Lab", class: "CSE-B" }
-  ],
-  Friday: [
-    { time: "10:00 AM", subject: "Cyber Security", teacher: "Prof. Adams", room: "506", type: "Lecture", class: "CSE-C" }
-  ],
-  Saturday: [
-    { time: "9:00 AM", subject: "Project Review", teacher: "Dr. Smith", room: "116", type: "Review", class: "All" }
-  ]
-};
+
 
 const card =
   "card-hover rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl transition dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white";
@@ -86,7 +56,7 @@ export default function HODDashboard() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<HODData | null>(null);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [eventTitle, setEventTitle] = useState("");
   const [eventVenue, setEventVenue] = useState("");
@@ -100,36 +70,51 @@ export default function HODDashboard() {
   );
 
   const selectedBranch = localStorage.getItem("hodBranch") || "cse";
-  const schedule = hodTimetable[selectedDay] || [];
+  const [mySchedule, setMySchedule] = useState<any[]>([]);
+
+  const schedule = mySchedule.filter(item => item.dayOfWeek === selectedDay);
 
   useEffect(() => {
-    setData({
-      name: "Dr. Sharma",
-      departments: 1,
-      faculty: 24,
-      reports: 18,
-      averageScore: 79,
-      attendanceRate: 84,
-      studentsAtRisk: 9,
-      bestDepartment: selectedBranch.toUpperCase(),
-      chartData: [
-        { name: "Mon", value: 72 },
-        { name: "Tue", value: 75 },
-        { name: "Wed", value: 80 },
-        { name: "Thu", value: 77 },
-        { name: "Fri", value: 83 },
-      ],
-    });
+    const fetchAllData = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!tenantSlug || !token) return;
 
-    const unsubscribe = listenLeaveRequests((items) => {
-      setLeaves(
-        items.filter(
-          (leave) =>
-            leave.status === "Pending" &&
-            leave.department?.toLowerCase() === selectedBranch
-        )
-      );
-    });
+        // Fetch Dashboard Stats
+        const statsRes = await dashboardApi.getPrincipalStats(token, tenantSlug);
+        if (statsRes.success) {
+          setData(statsRes.stats);
+        }
+
+        // Fetch Schedule
+        const scheduleRes = await fetch(`${API_BASE_URL}/t/${tenantSlug}/timetable/my-schedule`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const scheduleData = await scheduleRes.json();
+        if (scheduleData.success) {
+          setMySchedule(scheduleData.schedule);
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch HOD data", err);
+      }
+    };
+    fetchAllData();
+
+    const fetchLeaves = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || "";
+        if (tenantSlug && token && user?.role === "hod") {
+          const res = await leaveApi.getDepartmentLeaves(token, tenantSlug);
+          if (res.success) {
+            setLeaves(res.leaves);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch department leaves", err);
+      }
+    };
+    fetchLeaves();
 
     const fetchEvents = async () => {
       try {
@@ -143,9 +128,7 @@ export default function HODDashboard() {
       }
     };
     fetchEvents();
-
-    return () => unsubscribe();
-  }, [tenantSlug, selectedBranch]);
+  }, [tenantSlug, user?.id]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -214,7 +197,12 @@ export default function HODDashboard() {
 
   const update = async (id: string, status: "Approved" | "Rejected") => {
     try {
-      await updateLeaveStatus(id, status);
+      const token = localStorage.getItem("authToken") || "";
+      if (tenantSlug && token) {
+        await leaveApi.updateLeaveStatus(token, tenantSlug, id, status);
+        const res = await leaveApi.getDepartmentLeaves(token, tenantSlug);
+        if (res.success) setLeaves(res.leaves);
+      }
     } catch {
       alert("Failed to update leave status");
     }
@@ -228,7 +216,7 @@ export default function HODDashboard() {
     );
   }
 
-  const displayName = user?.name?.trim() || data.name;
+  const displayName = user?.name?.trim() || "HOD";
   const hodMeta = user?.department?.trim()?.toUpperCase() || user?.email?.trim() || "HOD";
 
   return (
@@ -254,21 +242,21 @@ export default function HODDashboard() {
             <DayStatusCard />
 
             <div className={card}>
-              <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
-                Departments <Building size={18} />
-              </p>
-              <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
-                {data.departments}
-              </h2>
-            </div>
+            <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
+              Critical Alerts <MailX size={18} className="text-rose-500" />
+            </p>
+            <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
+              {data?.criticalAlerts || 0}
+            </h2>
+          </div>
 
             <div className={card}>
               <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
                 Faculty <Users size={18} />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
-                {data.faculty}
-              </h2>
+              {data?.faculty || 0}
+            </h2>
             </div>
 
             <div className={card}>
@@ -276,24 +264,22 @@ export default function HODDashboard() {
                 Reports <BarChart3 size={18} />
               </p>
               <h2 className="mt-2 text-4xl font-black text-gold-600 dark:text-blue-400">
-                {data.reports}
+                {data?.reports || 0}
               </h2>
             </div>
 
             <div className={card}>
               <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
-                Avg Score <TrendingUp size={18} />
+                Health Index <TrendingUp size={18} className="text-emerald-500" />
               </p>
-              <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
-                {data.averageScore}%
-              </h2>
+              <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">{data?.healthIndex || 0}%</h2>
             </div>
           </div>
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <ProgressCard
               label={`${selectedBranch.toUpperCase()} Attendance Rate`}
-              value={data.attendanceRate}
+              value={data?.healthIndex || 0}
             />
             <Notifications department={selectedBranch} />
           </div>
@@ -310,45 +296,61 @@ export default function HODDashboard() {
           />
 
           <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
-              Pending Leave Requests
+            <h2 className="mb-4 text-xl font-black text-accent-blue">
+              Department Leave Requests
             </h2>
 
             {leaves.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {leaves.map((leave) => (
-                  <div key={leave.id} className={inner}>
-                    <p>
-                      <b>Name:</b> {leave.studentName}
-                    </p>
-                    <p>
-                      <b>From:</b> {leave.fromDate}
-                    </p>
-                    <p>
-                      <b>To:</b> {leave.toDate}
-                    </p>
-                    <p>
-                      <b>Reason:</b> {leave.reason}
-                    </p>
-
-                    <div className="mt-3 flex gap-3">
-                      <button
-                        onClick={() => leave.id && update(leave.id, "Approved")}
-                        // className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl mr-3"
-
-                      >
-                        Approve
-                      </button>
-
-                      <button
-                        onClick={() => leave.id && update(leave.id, "Rejected")}
-                        // className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
-                          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl mr-3"
-                      >
-                        Reject
-                      </button>
+                  <div key={leave._id} className={inner}>
+                    <div className="flex items-center justify-between">
+                      <p><b>Name:</b> {leave.studentName}</p>
+                      <p className="text-xs text-slate-400">
+                        Updated: {new Date(leave.updatedAt).toLocaleString()}
+                      </p>
                     </div>
+                    <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                    <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                    <p><b>Reason:</b> {leave.reason}</p>
+                    
+                    {leave.fileUrl && (
+                      <p>
+                        <b>Document:</b> <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline ml-1">View Attachment</a>
+                      </p>
+                    )}
+
+                    <p className="mt-2">
+                      <b>Status:</b>{" "}
+                      <span
+                        className={
+                          leave.status === "Approved"
+                            ? "font-bold text-emerald-500"
+                            : leave.status === "Rejected"
+                            ? "font-bold text-rose-500"
+                            : "font-bold text-gold-500"
+                        }
+                      >
+                        {leave.status}
+                      </span>
+                    </p>
+
+                    {leave.status === "Pending" && (
+                      <div className="mt-4 flex gap-3">
+                        <button
+                          onClick={() => update(leave._id, "Approved")}
+                          className="rounded-xl bg-emerald-500/10 px-4 py-2 font-bold text-emerald-600 transition hover:bg-emerald-500/20"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => update(leave._id, "Rejected")}
+                          className="rounded-xl bg-rose-500/10 px-4 py-2 font-bold text-rose-600 transition hover:bg-rose-500/20"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -385,33 +387,38 @@ export default function HODDashboard() {
             ))}
           </div>
 
-          <div className="space-y-4">
-            {schedule.length > 0 ? (
-              schedule.map((item, index) => (
-                <div key={index} className="card-hover flex flex-col md:flex-row md:items-center justify-between rounded-2xl border border-slate-200/60 bg-white/90 p-5 shadow-sm transition dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                    <div className="flex h-12 w-32 items-center justify-center rounded-xl bg-gold-50 text-gold-700 dark:bg-[#6366f1]/10 dark:text-[#6366f1] font-bold shadow-inner">
-                      {item.time}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-slate-800 dark:text-white">
-                        {item.subject} <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">({item.type})</span>
-                      </h3>
-                      <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        {item.teacher} • Class: {item.class}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4 md:mt-0 flex items-center gap-2 rounded-lg bg-slate-50 px-4 py-2 font-bold text-slate-600 dark:bg-[#111B44] dark:text-slate-300 border border-slate-200 dark:border-blue-500/10">
-                    <span>🚪</span> Room {item.room}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-500 dark:text-slate-400 p-6 bg-white/50 rounded-2xl dark:bg-[#0C1330]/50 border border-slate-200/50 dark:border-blue-500/10 text-center font-semibold">
-                No classes scheduled for {selectedDay}.
-              </p>
-            )}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
+            <table className="w-full text-left">
+              <thead className="bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400">
+                <tr>
+                  <th className="p-4 font-bold">Time</th>
+                  <th className="p-4 font-bold">Subject</th>
+                  <th className="p-4 font-bold">Faculty</th>
+                  <th className="p-4 font-bold">Room</th>
+                  <th className="p-4 font-bold">Semester</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/10 text-slate-800 dark:text-slate-200">
+                {schedule.map((item: any, i: number) => (
+                  <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                    <td className="p-4 font-semibold text-blue-600 dark:text-blue-400">
+                      {item.startTime} - {item.endTime}
+                    </td>
+                    <td className="p-4">
+                      <p className="font-bold">{item.subject}</p>
+                    </td>
+                    <td className="p-4 font-medium">{item.facultyId?.name || "TBA"}</td>
+                    <td className="p-4">{item.room}</td>
+                    <td className="p-4">Sem {item.semester}</td>
+                  </tr>
+                ))}
+                {schedule.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-500">No classes scheduled for {selectedDay}.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -423,39 +430,31 @@ export default function HODDashboard() {
             description="Analyze department performance, attendance rate, risk indicators and top-performing areas."
           />
 
-          <div className={card}>
-            <Charts
-              title1={`${selectedBranch.toUpperCase()} Performance`}
-              title2="Department Trend"
-              data={data.chartData}
-            />
-          </div>
-
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div className={card}>
               <h2 className="mb-2 text-xl font-black text-gold-600 dark:text-blue-400">
                 Attendance Rate
               </h2>
               <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {data.attendanceRate}%
+                {data?.healthIndex || 0}%
               </p>
             </div>
 
             <div className={card}>
-              <h2 className="mb-2 text-xl font-black text-red-500 dark:text-red-400">
-                Students At Risk
+              <h2 className="mb-2 text-xl font-black text-rose-500 dark:text-rose-400">
+                Total Students
               </h2>
               <p className="text-3xl font-black text-slate-900 dark:text-white">
-                {data.studentsAtRisk}
+                {data?.totalStudents || 0}
               </p>
             </div>
 
             <div className={card}>
-              <h2 className="mb-2 text-xl font-black text-accent-blue">
-                Best Department
+              <h2 className="mb-2 text-xl font-black text-emerald-500 dark:text-emerald-400">
+                Top Department
               </h2>
-              <p className="text-3xl font-black text-gold-600 dark:text-blue-400">
-                {data.bestDepartment}
+              <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                {data?.topDepartment || "N/A"}
               </p>
             </div>
           </div>

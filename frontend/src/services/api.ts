@@ -632,3 +632,130 @@ export const eventApi = {
       token,
     }),
 };
+
+export type LeaveItem = {
+  _id: string;
+  studentId: string;
+  studentName: string;
+  department: string;
+  semester?: string;
+  reason: string;
+  fromDate: string;
+  toDate: string;
+  status: "Pending" | "Approved" | "Rejected";
+  fileUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const leaveApi = {
+  applyLeave: (token: string, tenantSlug: string, formData: FormData) =>
+    request<{ success: boolean; message: string; leave: LeaveItem }>(tenantPath(tenantSlug, `/leaves/apply`), {
+      method: "POST",
+      token,
+      body: formData,
+    }),
+
+  getMyLeaves: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; leaves: LeaveItem[] }>(tenantPath(tenantSlug, `/leaves/my-leaves`), {
+      method: "GET",
+      token,
+    }),
+
+  getDepartmentLeaves: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; leaves: LeaveItem[] }>(tenantPath(tenantSlug, `/leaves/department-leaves`), {
+      method: "GET",
+      token,
+    }),
+
+  getAllLeaves: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; leaves: LeaveItem[] }>(tenantPath(tenantSlug, `/leaves/all-leaves`), {
+      method: "GET",
+      token,
+    }),
+
+  updateLeaveStatus: (token: string, tenantSlug: string, leaveId: string, status: "Approved" | "Rejected") =>
+    request<{ success: boolean; message: string; leave: LeaveItem }>(tenantPath(tenantSlug, `/leaves/${leaveId}/status`), {
+      method: "PATCH",
+      token,
+      body: { status },
+    }),
+};
+
+export type AttendanceTest = {
+  _id: string;
+  title: string;
+  subject: string;
+  department: string;
+  roomCode: string;
+  createdAt: string;
+  attendanceSubmitted: boolean;
+};
+
+export type AttendanceStudent = {
+  _id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: string;
+};
+
+export type AttendanceSummaryItem = {
+  _id: string;
+  subject: string;
+  totalTests: number;
+  attendedTests: number;
+  percentage: number;
+};
+
+export const attendanceApi = {
+  getFacultyTests: (token: string, tenantSlug: string, date?: string) =>
+    request<{ success: boolean; tests: AttendanceTest[] }>(
+      tenantPath(tenantSlug, `/attendance/faculty/tests${date ? `?date=${date}` : ""}`),
+      { method: "GET", token }
+    ),
+
+  getTestStudents: (token: string, tenantSlug: string, testId: string) =>
+    request<{ success: boolean; submitted: boolean; students: AttendanceStudent[] }>(
+      tenantPath(tenantSlug, `/attendance/faculty/test-students/${testId}`),
+      { method: "GET", token }
+    ),
+
+  submitAttendance: (
+    token: string,
+    tenantSlug: string,
+    testId: string,
+    presentStudentIds: string[]
+  ) =>
+    request<{ success: boolean; message: string }>(
+      tenantPath(tenantSlug, `/attendance/submit`),
+      { method: "POST", token, body: { testId, presentStudentIds } }
+    ),
+
+  getStudentSummary: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; attendance: AttendanceSummaryItem[] }>(
+      tenantPath(tenantSlug, `/attendance/student/summary`),
+      { method: "GET", token }
+    ),
+};
+
+export const dashboardApi = {
+  getStudentStats: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; stats: any }>(
+      tenantPath(tenantSlug, `/dashboard/student`),
+      { method: "GET", token }
+    ),
+
+  getFacultyStats: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; stats: any }>(
+      tenantPath(tenantSlug, `/dashboard/faculty`),
+      { method: "GET", token }
+    ),
+
+  getPrincipalStats: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; stats: any }>(
+      tenantPath(tenantSlug, `/dashboard/principal`),
+      { method: "GET", token }
+    ),
+};
+

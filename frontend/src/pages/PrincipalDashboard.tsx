@@ -6,16 +6,15 @@ import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { listenLeaveRequests } from "../services/leaveServices";
-import type { LeaveRequest } from "../services/leaveServices";
+import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
+import { leaveApi, dashboardApi, eventApi, type LeaveItem, type EventItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { Users, Briefcase, TrendingUp, Calendar, Trash2 } from "lucide-react";
+import { Calendar, Trash2 } from "lucide-react";
 import TimetableUploader from "../components/TimetableUploader";
-import { eventApi, API_BASE_URL } from "../services/api";
-import type { EventItem, EventAudience } from "../services/api";
+import { API_BASE_URL } from "../services/api";
+import type { EventAudience } from "../services/api";
 
 type PrincipalData = {
-  name: string;
   totalStudents: number;
   faculty: number;
   departments: number;
@@ -23,7 +22,8 @@ type PrincipalData = {
   healthIndex: number;
   criticalAlerts: number;
   topDepartment: string;
-  chartData: { name: string; value: number }[];
+  chartData: any;
+  name?: string;
 };
 
 type TabType = "dashboard" | "leaves" | "timetable" | "alerts" | "performance" | "events" | "notifications";
@@ -62,7 +62,7 @@ export default function PrincipalDashboard() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<PrincipalData | null>(null);
-  const [leaveOverview, setLeaveOverview] = useState<LeaveRequest[]>([]);
+  const [leaveOverview, setLeaveOverview] = useState<LeaveItem[]>([]);
 
   // Events State
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -75,44 +75,26 @@ export default function PrincipalDashboard() {
   const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
-    setData({
-      name: "Principal Demo",
-      totalStudents: 1200,
-      faculty: 82,
-      departments: 6,
-      institutionPerformance: 81,
-      healthIndex: 86,
-      criticalAlerts: 3,
-      topDepartment: "CSE",
-      chartData: [
-        { name: "Mon", value: 74 },
-        { name: "Tue", value: 77 },
-        { name: "Wed", value: 79 },
-        { name: "Thu", value: 82 },
-        { name: "Fri", value: 84 },
-      ],
-    });
-
-    const unsubscribe = listenLeaveRequests((leaves) => {
-      setLeaveOverview(leaves);
-    });
-
-    // Fetch Events
-    const fetchEvents = async () => {
+    const fetchAllData = async () => {
       try {
-        const token = localStorage.getItem("authToken") || "";
-        if (tenantSlug && token) {
-          const res = await eventApi.getEvents(token, tenantSlug);
-          if (res.success) setEvents(res.events);
-        }
+        const token = localStorage.getItem("authToken");
+        if (!tenantSlug || !token) return;
+
+        const [statsRes, leavesRes, eventsRes] = await Promise.all([
+          dashboardApi.getPrincipalStats(token, tenantSlug),
+          user?.role === "institution_admin" ? leaveApi.getAllLeaves(token, tenantSlug) : Promise.resolve({ success: false, leaves: [] }),
+          eventApi.getEvents(token, tenantSlug)
+        ]);
+
+        if (statsRes.success) setData(statsRes.stats);
+        if (leavesRes.success) setLeaveOverview(leavesRes.leaves);
+        if (eventsRes.success) setEvents(eventsRes.events);
       } catch (err) {
-        console.error("Failed to fetch events", err);
+        console.error("Failed to fetch dashboard data", err);
       }
     };
-    fetchEvents();
-
-    return () => unsubscribe();
-  }, []);
+    fetchAllData();
+  }, [tenantSlug, user?.role]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -243,7 +225,7 @@ export default function PrincipalDashboard() {
 
             <div className={cardClass}>
               <p className="flex items-center gap-2 text-base font-semibold text-slate-500 dark:text-slate-400">
-                Faculty <Briefcase size={18} className="text-blue-500" />
+                Faculty <BookOpen size={18} className="text-blue-500" />
               </p>
               <h2 className="mt-2 text-4xl font-black text-slate-900 dark:text-white">{data.faculty}</h2>
             </div>
@@ -325,6 +307,55 @@ export default function PrincipalDashboard() {
               </div>
             </div>
           </div>
+
+          <div className={card}>
+            <h2 className="mb-4 text-xl font-black text-accent-blue">
+              Institution Leave Log
+            </h2>
+
+            {leaveOverview.length > 0 ? (
+              <div className="space-y-4">
+                {leaveOverview.map((leave) => (
+                  <div key={leave._id} className={inner}>
+                    <div className="flex items-center justify-between">
+                      <p><b>Name:</b> {leave.studentName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
+                      <p className="text-xs text-slate-400">
+                        Updated: {new Date(leave.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                    <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                    <p><b>Reason:</b> {leave.reason}</p>
+                    
+                    {leave.fileUrl && (
+                      <p>
+                        <b>Document:</b> <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline ml-1">View Attachment</a>
+                      </p>
+                    )}
+
+                    <p className="mt-2">
+                      <b>Status:</b>{" "}
+                      <span
+                        className={
+                          leave.status === "Approved"
+                            ? "font-bold text-emerald-500"
+                            : leave.status === "Rejected"
+                            ? "font-bold text-rose-500"
+                            : "font-bold text-gold-500"
+                        }
+                      >
+                        {leave.status}
+                      </span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 text-slate-400">
+                <p>No leave requests found.</p>
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -361,14 +392,6 @@ export default function PrincipalDashboard() {
             title="Institution Performance"
             description="Track institutional growth, health index, critical alerts and top department performance."
           />
-
-          <div className={card}>
-            <Charts
-              title1="Institution Growth"
-              title2="Monthly Performance"
-              data={data.chartData}
-            />
-          </div>
 
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <div className={card}>

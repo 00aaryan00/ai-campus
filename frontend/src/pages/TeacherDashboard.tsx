@@ -11,8 +11,10 @@ import { API_BASE_URL } from "../services/api";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
+import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
+import { facultyAiApi, facultyTestApi, eventApi, attendanceApi, dashboardApi, type EventItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { facultyAiApi, facultyTestApi, eventApi, type EventItem } from "../services/api";
+import type { AttendanceTest, AttendanceStudent } from "../services/api";
 
 type LeaveRequest = {
   id?: string;
@@ -36,14 +38,12 @@ type QuestionPayload = {
 };
 
 type TeacherData = {
-  name: string;
   classes: number;
   students: number;
   assignmentsGiven: number;
   averageScore: number;
   atRiskStudents: number;
   upcomingExam: string;
-  chartData: { name: string; value: number }[];
 };
 
 type TabType =
@@ -150,6 +150,84 @@ export default function TeacherDashboard() {
   
   const [mySchedule, setMySchedule] = useState<any[]>([]);
 
+  // Attendance State
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split("T")[0]);
+  const [attendanceTests, setAttendanceTests] = useState<AttendanceTest[]>([]);
+  const [expandedTestId, setExpandedTestId] = useState<string | null>(null);
+  const [attendanceStudents, setAttendanceStudents] = useState<AttendanceStudent[]>([]);
+  const [presentStudentIds, setPresentStudentIds] = useState<Set<string>>(new Set());
+  const [isAttendanceSubmitted, setIsAttendanceSubmitted] = useState(false);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "attendance" && tenantSlug && token) {
+      const fetchTests = async () => {
+        try {
+          const res = await attendanceApi.getFacultyTests(token, tenantSlug, attendanceDate);
+          if (res.success) setAttendanceTests(res.tests);
+        } catch (err) {
+          console.error("Failed to fetch tests for attendance", err);
+        }
+      };
+      fetchTests();
+      setExpandedTestId(null);
+    }
+  }, [activeTab, attendanceDate, tenantSlug, token]);
+
+  const handleExpandTest = async (testId: string) => {
+    if (expandedTestId === testId) {
+      setExpandedTestId(null);
+      return;
+    }
+    setExpandedTestId(testId);
+    setLoadingAttendance(true);
+    try {
+      if (!token || !tenantSlug) return;
+      const res = await attendanceApi.getTestStudents(token, tenantSlug, testId);
+      if (res.success) {
+        setAttendanceStudents(res.students);
+        setPresentStudentIds(new Set(res.students.map(s => s._id)));
+        setIsAttendanceSubmitted(res.submitted);
+      }
+    } catch (err) {
+      console.error("Failed to fetch test students", err);
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const handleToggleStudent = (studentId: string) => {
+    if (isAttendanceSubmitted) return; // cannot edit if already submitted
+    setPresentStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else next.add(studentId);
+      return next;
+    });
+  };
+
+  const handleSubmitAttendance = async () => {
+    if (!expandedTestId || !tenantSlug || !token) return;
+    try {
+      const res = await attendanceApi.submitAttendance(
+        token,
+        tenantSlug,
+        expandedTestId,
+        Array.from(presentStudentIds)
+      );
+      if (res.success) {
+        setIsAttendanceSubmitted(true);
+        alert("Attendance submitted successfully!");
+        setAttendanceTests(prev =>
+          prev.map(t => (t._id === expandedTestId ? { ...t, attendanceSubmitted: true } : t))
+        );
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to submit attendance");
+    }
+  };
+
   useEffect(() => {
     const loadSchedule = async () => {
       try {
@@ -199,25 +277,22 @@ export default function TeacherDashboard() {
   const selectedDaySchedule = mySchedule.filter(item => item.dayOfWeek === selectedDay);
 
   useEffect(() => {
-    // Backend-first mode: avoid hard dependency on Firestore data for dashboard boot.
-    setData({
-      name: "Faculty",
-      classes: 6,
-      students: 120,
-      assignmentsGiven: 18,
-      averageScore: 78,
-      atRiskStudents: 7,
-      upcomingExam: "Weekly Assessment - Friday 10:00 AM",
-      chartData: [
-        { name: "Mon", value: 70 },
-        { name: "Tue", value: 74 },
-        { name: "Wed", value: 79 },
-        { name: "Thu", value: 76 },
-        { name: "Fri", value: 82 },
-      ],
-    });
+    const fetchDashboardStats = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (tenantSlug && token) {
+          const res = await dashboardApi.getFacultyStats(token, tenantSlug);
+          if (res.success) {
+            setData(res.stats);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats", err);
+      }
+    };
+    fetchDashboardStats();
     setLeaves([]);
-  }, []);
+  }, [tenantSlug]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -542,6 +617,121 @@ export default function TeacherDashboard() {
           <AIInsights role="faculty" />
         </>
       )}
+      {activeTab === "attendance" && (
+        <>
+          <SectionHeader
+            title="Attendance Tracking"
+            description="Manage and submit daily attendance based on completed tests."
+          />
+
+          <div className={card}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <h2 className="text-xl font-black text-blue-600 dark:text-blue-400">
+                Attendance by Tests
+              </h2>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-slate-500">Date Filter:</span>
+                <input
+                  type="date"
+                  value={attendanceDate}
+                  onChange={(e) => setAttendanceDate(e.target.value)}
+                  className="rounded-xl border border-slate-300 bg-white p-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                />
+              </div>
+            </div>
+
+            {attendanceTests.length === 0 ? (
+              <p className="text-slate-500 dark:text-slate-400 p-4 text-center">
+                No tests found for this date. Try changing the date filter.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {attendanceTests.map((test) => (
+                  <div key={test._id} className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-4 dark:border-blue-500/10 dark:bg-blue-900/10">
+                    <div className="flex items-center justify-between cursor-pointer" onClick={() => handleExpandTest(test._id)}>
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          {test.title}
+                          {!test.attendanceSubmitted && (
+                            <span className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                              LIVE
+                            </span>
+                          )}
+                          {test.attendanceSubmitted && (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                              Submitted
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-sm text-slate-500">{test.subject} • {test.department.toUpperCase()}</p>
+                      </div>
+                      <button className="text-sm font-bold text-blue-500 hover:text-blue-600">
+                        {expandedTestId === test._id ? "Collapse" : "View List"}
+                      </button>
+                    </div>
+
+                    {expandedTestId === test._id && (
+                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-blue-500/10">
+                        {loadingAttendance ? (
+                          <p className="text-sm text-slate-500">Loading student list...</p>
+                        ) : attendanceStudents.length === 0 ? (
+                          <p className="text-sm text-slate-500 italic">No students have submitted this test yet.</p>
+                        ) : (
+                          <>
+                            <p className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
+                              {isAttendanceSubmitted ? "Submitted Attendance List (Read-only)" : "Live Test Attempts (Uncheck to mark absent)"}
+                            </p>
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                              {attendanceStudents.map((student) => {
+                                const isPresent = presentStudentIds.has(student._id);
+                                return (
+                                  <div key={student._id} className="flex items-center justify-between rounded-xl bg-white p-3 shadow-sm dark:bg-[#0C1330]">
+                                    <div>
+                                      <p className={`font-semibold ${isPresent ? "text-slate-900 dark:text-white" : "text-slate-400 line-through"}`}>
+                                        {student.name}
+                                      </p>
+                                      <p className="text-xs text-slate-500">{student.email}</p>
+                                    </div>
+                                    {!isAttendanceSubmitted && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleToggleStudent(student._id); }}
+                                        className={`rounded-lg px-3 py-1 text-xs font-bold transition ${isPresent ? "bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20"}`}
+                                      >
+                                        {isPresent ? "Remove" : "Restore"}
+                                      </button>
+                                    )}
+                                    {isAttendanceSubmitted && (
+                                      <span className={`text-xs font-bold ${isPresent ? "text-emerald-500" : "text-red-500"}`}>
+                                        {isPresent ? "Present" : "Absent"}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            {!isAttendanceSubmitted && attendanceStudents.length > 0 && (
+                              <div className="mt-4 flex justify-end">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleSubmitAttendance(); }}
+                                  className={btn}
+                                >
+                                  Submit All Attendance
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {activeTab === "classes" && (
         <>
@@ -639,81 +829,6 @@ export default function TeacherDashboard() {
         </>
       )}
 
-      {activeTab === "attendance" && (
-        <>
-          <SectionHeader
-            title="Attendance Management"
-            description="Mark and manage student attendance for today's classes."
-          />
-
-          <div className={card}>
-            <h2 className="mb-3 text-xl font-black text-gold-600 dark:text-blue-400">
-              Mark Attendance
-            </h2>
-
-            <p className="mb-4 text-slate-500 dark:text-slate-400">
-              Select a class and mark students as present or absent.
-            </p>
-
-            <div className="mb-4 grid gap-4 md:grid-cols-3">
-              <select className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white">
-                <option>Select Class</option>
-                <option>8</option>
-                <option>9</option>
-                <option>10</option>
-                <option>11</option>
-                <option>12</option>
-              </select>
-
-              <select className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white">
-                <option>Select Section</option>
-                <option>A</option>
-                <option>B</option>
-                <option>C</option>
-              </select>
-
-              <select className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white">
-                <option>Select Subject</option>
-                <option>Mathematics</option>
-                <option>AI Basics</option>
-                <option>Operating Systems</option>
-              </select>
-
-              <input
-                type="date"
-                className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
-              />
-            </div>
-
-            <div className="space-y-3">
-              {["Aarav", "Meera", "Charan", "Diya", "Rahul"].map((student) => (
-                <div
-                  key={student}
-                  className="flex items-center justify-between rounded-2xl border border-slate-200/50 bg-slate-50 p-4 dark:border-blue-500/10 dark:bg-[#111B44]"
-                >
-                  <p className="font-semibold">{student}</p>
-
-                  <div className="flex gap-2">
-                    <button
-                      className="rounded-xl bg-green-600 hover:bg-green-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
-                    >
-                      Present
-                    </button>
-
-                    <button
-                      className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
-                    >
-                      Absent
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button className={`${btn} mt-5`}>Submit Attendance</button>
-          </div>
-        </>
-      )}
 
       {activeTab === "exams" && (
         <>
@@ -1080,14 +1195,6 @@ export default function TeacherDashboard() {
             title="Class Performance"
             description="Track class activity, weekly trends, at-risk students and upcoming assessments."
           />
-
-          <div className={card}>
-            <Charts
-              title1="Class Activity"
-              title2="Weekly Trend"
-              data={data.chartData}
-            />
-          </div>
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <div className={card}>

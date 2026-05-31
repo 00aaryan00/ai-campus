@@ -9,6 +9,9 @@ const resultRoutes = require("./routes/resultRoutes");
 const testRoutes = require("./routes/testRoutes");
 const timetableRoutes = require("./routes/timetableRoutes");
 const eventRoutes = require("./routes/eventRoutes");
+const leaveRoutes = require("./routes/leaveRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const path = require("path");
 const { createRedisConnection } = require("./config/redis");
 const {
@@ -141,6 +144,9 @@ tenantApiRouter.use("/tests", testRoutes);
 tenantApiRouter.use("/results", resultRoutes);
 tenantApiRouter.use("/timetable", timetableRoutes);
 tenantApiRouter.use("/events", eventRoutes);
+tenantApiRouter.use("/leaves", leaveRoutes);
+tenantApiRouter.use("/attendance", attendanceRoutes);
+tenantApiRouter.use("/dashboard", dashboardRoutes);
 
 app.use("/api/t/:tenantSlug", tenantApiRouter);
 

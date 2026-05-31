@@ -8,28 +8,17 @@ import DayStatusCard, {
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { applyLeave, listenLeaveRequests } from "../services/leaveServices";
-import type { LeaveRequest } from "../services/leaveServices";
+import { leaveApi, type LeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { TrendingUp, BookOpen, FileText, MailX, CheckCircle, XCircle } from "lucide-react";
-import { resultApi, API_BASE_URL, eventApi, type EventItem } from "../services/api";
+import { resultApi, API_BASE_URL, eventApi, attendanceApi, dashboardApi, type EventItem, type AttendanceSummaryItem } from "../services/api";
 import StudentSemesterModal from "../components/StudentSemesterModal";
 
 type StudentData = {
-  name: string;
   attendance: number;
   grade: string;
-  chartData?: { name: string; value: number }[];
-  rank: number;
-  percentile: number;
   feedback: string;
   weakArea: string;
-  leaderboardName: string;
-  nearestCompetitor: string;
-  competitorDelta: number;
-  recommendedTopic: string;
-  practiceLevel: string;
-  practiceQuestions: number;
 };
 
 type TabType =
@@ -82,6 +71,23 @@ export default function StudentDashboard() {
 
   // Sync ref with state
   useEffect(() => {
+    const fetchLeaves = async () => {
+      try {
+        const token = localStorage.getItem("authToken") || "";
+        if (tenantSlug && token && user?.role === "student") {
+          const res = await leaveApi.getMyLeaves(token, tenantSlug);
+          if (res.success) {
+            setMyLeaves(res.leaves);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch leaves", err);
+      }
+    };
+    fetchLeaves();
+  }, [tenantSlug, user?.id]);
+  
+  useEffect(() => {
     lastViewedTimeRef.current = lastViewedTime;
   }, [lastViewedTime]);
 
@@ -98,12 +104,15 @@ export default function StudentDashboard() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [department, setDepartment] = useState("cse");
-  const [myLeaves, setMyLeaves] = useState<LeaveRequest[]>([]);
+  const [myLeaves, setMyLeaves] = useState<LeaveItem[]>([]);
+  const [leaveFile, setLeaveFile] = useState<File | null>(null);
+  const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
 
   const dayStatus = getCurrentDayStatus();
 
   const [selectedDay, setSelectedDay] = useState(dayStatus.dayName);
-  const [attendanceTab, setAttendanceTab] = useState<"theory" | "lab">("theory");
+  const [attendanceSummaries, setAttendanceSummaries] = useState<AttendanceSummaryItem[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
 
   const [enteredExamCode, setEnteredExamCode] = useState("");
   const [examJoinMessage, setExamJoinMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
@@ -142,46 +151,44 @@ export default function StudentDashboard() {
   const todaySchedule = mySchedule.filter(item => item.dayOfWeek === dayStatus.dayName);
   const selectedDaySchedule = mySchedule.filter(item => item.dayOfWeek === selectedDay);
     
-  const theoryAttendance = [
-    { name: "Software Engineering", code: "CSE1005", percent: 79 },
-    { name: "Database Management Systems", code: "CSE2007", percent: 82 },
-    { name: "Introduction to Machine Learning", code: "CSE3008", percent: 87 },
-    { name: "Computer Organization and Architecture", code: "ECE2002", percent: 83 },
-    { name: "Applied Statistics", code: "MAT1011", percent: 91 },
-    { name: "Arithmetic Problem Solving Skills", code: "STS2009", percent: 95 }
-  ];
+  useEffect(() => {
+    if (activeTab === "attendance" && tenantSlug) {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
 
-  const labAttendance = [
-    { name: "Database Management Systems Lab", code: "CSE2007", percent: 100 },
-    { name: "Introduction to Machine Learning Lab", code: "CSE3008", percent: 88 },
-    { name: "Computer Organization and Architecture Lab", code: "ECE2002", percent: 100 }
-  ];
+      const fetchAttendance = async () => {
+        setLoadingAttendance(true);
+        try {
+          const res = await attendanceApi.getStudentSummary(token, tenantSlug);
+          if (res.success) {
+            setAttendanceSummaries(res.attendance);
+          }
+        } catch (err) {
+          console.error("Failed to fetch student attendance summary", err);
+        } finally {
+          setLoadingAttendance(false);
+        }
+      };
+      fetchAttendance();
+    }
+  }, [activeTab, tenantSlug]);
 
   useEffect(() => {
-    // Backend-first mode: avoid blocking dashboard render on Firestore profile docs.
-    setData({
-      name: "Aarav Sharma",
-      attendance: 86,
-      grade: "A",
-      chartData: [
-        { name: "Mon", value: 72 },
-        { name: "Tue", value: 76 },
-        { name: "Wed", value: 81 },
-        { name: "Thu", value: 78 },
-        { name: "Fri", value: 84 },
-      ],
-      rank: 12,
-      percentile: 88,
-      feedback: "Good consistency. Improve long-form answer accuracy.",
-      weakArea: "Applied Statistics",
-      leaderboardName: "Aarav Sharma",
-      nearestCompetitor: "Riya Singh",
-      competitorDelta: 4,
-      recommendedTopic: "Probability Distributions",
-      practiceLevel: "Medium",
-      practiceQuestions: 15,
-    });
-  }, []);
+    const fetchDashboardStats = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (tenantSlug && token) {
+          const res = await dashboardApi.getStudentStats(token, tenantSlug);
+          if (res.success) {
+            setData(res.stats);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats", err);
+      }
+    };
+    fetchDashboardStats();
+  }, [tenantSlug]);
 
   useEffect(() => {
     const loadRecentAttempts = async () => {
@@ -227,21 +234,7 @@ export default function StudentDashboard() {
     return () => clearInterval(interval);
   }, [tenantSlug, user?.id]);
 
-  useEffect(() => {
-    if (!data?.name) return;
 
-    const unsubscribe = listenLeaveRequests((leaves) => {
-      const filteredLeaves = leaves.filter(
-        (leave) =>
-          leave.studentName.toLowerCase().trim() ===
-          data.name.toLowerCase().trim()
-      );
-
-      setMyLeaves(filteredLeaves);
-    });
-
-    return () => unsubscribe();
-  }, [data]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -259,25 +252,35 @@ export default function StudentDashboard() {
   const handleLeaveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!data) return;
+    if (!user || !tenantSlug) return;
+    setIsSubmittingLeave(true);
 
     try {
-      await applyLeave({
-        studentName: data.name,
-        role: "Student",
-        department,
-        reason: leaveReason,
-        fromDate,
-        toDate,
-      });
+      const token = localStorage.getItem("authToken") || "";
+      const formData = new FormData();
+      formData.append("reason", leaveReason);
+      formData.append("fromDate", fromDate);
+      formData.append("toDate", toDate);
+      if (leaveFile) {
+        formData.append("file", leaveFile);
+      }
+
+      await leaveApi.applyLeave(token, tenantSlug, formData);
 
       alert("Leave application submitted successfully!");
       setLeaveReason("");
       setFromDate("");
       setToDate("");
-      setDepartment("cse");
+      setLeaveFile(null);
+      
+      // Refresh leaves
+      const res = await leaveApi.getMyLeaves(token, tenantSlug);
+      if (res.success) setMyLeaves(res.leaves);
+      
     } catch {
       alert("Failed to submit leave request");
+    } finally {
+      setIsSubmittingLeave(false);
     }
   };
 
@@ -443,25 +446,26 @@ export default function StudentDashboard() {
           />
 
           <div className={cardClass}>
-            <div className="flex gap-4 mb-6">
-              <button 
-                onClick={() => setAttendanceTab("theory")}
-                className={`flex-1 py-3 rounded-2xl font-bold transition-all ${attendanceTab === "theory" ? "bg-slate-700 text-white shadow-md dark:bg-blue-500/20 dark:text-blue-400" : "bg-slate-100 text-slate-500 dark:bg-[#111B44] dark:text-slate-400"}`}
-              >Theory</button>
-              <button 
-                onClick={() => setAttendanceTab("lab")}
-                className={`flex-1 py-3 rounded-2xl font-bold transition-all ${attendanceTab === "lab" ? "bg-slate-700 text-white shadow-md dark:bg-blue-500/20 dark:text-blue-400" : "bg-slate-100 text-slate-500 dark:bg-[#111B44] dark:text-slate-400"}`}
-              >Lab</button>
-            </div>
-            
             <div className="space-y-4">
-              {(attendanceTab === "theory" ? theoryAttendance : labAttendance).map((subj, idx) => (
-                <div key={idx} className={innerCardClass}>
-                  <h3 className="text-4xl font-black text-blue-500 dark:text-blue-400">{subj.percent}%</h3>
-                  <p className="mt-3 text-lg font-bold text-slate-800 dark:text-white">{subj.name}</p>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{subj.code}</p>
-                </div>
-              ))}
+              {loadingAttendance ? (
+                <p className="text-slate-500 p-4 text-center">Loading attendance data...</p>
+              ) : attendanceSummaries.length === 0 ? (
+                <p className="text-slate-500 p-4 text-center">No attendance records found.</p>
+              ) : (
+                attendanceSummaries.map((subj) => (
+                  <div key={subj._id} className={`${innerCardClass} flex items-center justify-between`}>
+                    <div>
+                      <p className="text-lg font-bold text-slate-800 dark:text-white">{subj.subject}</p>
+                      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                        Tests Attended: {subj.attendedTests} / {subj.totalTests}
+                      </p>
+                    </div>
+                    <h3 className={`text-3xl font-black ${subj.percentage >= 75 ? "text-emerald-500 dark:text-emerald-400" : subj.percentage >= 60 ? "text-gold-500" : "text-red-500 dark:text-red-400"}`}>
+                      {subj.percentage}%
+                    </h3>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>
@@ -481,29 +485,20 @@ export default function StudentDashboard() {
               </h2>
 
               <form onSubmit={handleLeaveSubmit}>
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className={`${inputClass} mb-4`}
-                  required
-                >
-                  <option className="text-black" value="cse">
-                    CSE
-                  </option>
-                  <option className="text-black" value="ece">
-                    ECE
-                  </option>
-                  <option className="text-black" value="eee">
-                    EEE
-                  </option>
-                  <option className="text-black" value="mech">
-                    MECH
-                  </option>
-                </select>
+                <div className="mb-4">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Supporting Document (Medical Cert. etc) - Optional
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => setLeaveFile(e.target.files ? e.target.files[0] : null)}
+                    className="w-full text-slate-700 dark:text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-gold-500/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-gold-600 dark:file:text-gold-500 hover:file:bg-gold-500/30"
+                  />
+                </div>
 
                 <div className="mb-4 grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-300">
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       From
                     </label>
 
@@ -517,7 +512,7 @@ export default function StudentDashboard() {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-300">
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
                       To
                     </label>
 
@@ -539,8 +534,12 @@ export default function StudentDashboard() {
                   required
                 />
 
-                <button className={`mt-4 ${buttonClass}`}>
-                  Submit Leave Request
+                <button 
+                  type="submit" 
+                  disabled={isSubmittingLeave}
+                  className={`mt-4 ${buttonClass} disabled:opacity-50`}
+                >
+                  {isSubmittingLeave ? "Submitting..." : "Submit Leave Request"}
                 </button>
               </form>
             </div>
@@ -553,35 +552,36 @@ export default function StudentDashboard() {
               {myLeaves.length > 0 ? (
                 <div className="space-y-3">
                   {myLeaves.map((leave) => (
-                    <div key={leave.id} className={innerCardClass}>
-                      <p>
-                        <b>Department:</b> {leave.department?.toUpperCase()}
-                      </p>
-                      <p>
-                        <b>From:</b> {leave.fromDate}
-                      </p>
-                      <p>
-                        <b>To:</b> {leave.toDate}
-                      </p>
-                      <p>
-                        <b>Reason:</b> {leave.reason}
-                      </p>
-                      <p>
+                    <div key={leave._id} className={innerCardClass}>
+                      <div className="flex items-center justify-between">
+                        <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-400">
+                          Updated: {new Date(leave.updatedAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                      <p><b>Reason:</b> {leave.reason}</p>
+                      {leave.fileUrl && (
+                        <p>
+                          <b>Document:</b> <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline ml-1">View Attachment</a>
+                        </p>
+                      )}
+                      <p className="mt-2">
                         <b>Status:</b>{" "}
                         <span
                           className={
                             leave.status === "Approved"
-                              ? "font-bold text-accent-emerald"
+                              ? "font-bold text-emerald-500"
                               : leave.status === "Rejected"
-                              ? "font-bold text-accent-rose"
-                              : "font-bold text-gold-600 dark:text-blue-400"
+                              ? "font-bold text-rose-500"
+                              : "font-bold text-gold-500"
                           }
                         >
                           {leave.status}
                         </span>
                       </p>
                       {leave.status === "Approved" && (
-                        <button className="mt-3 rounded-xl bg-indigo-500/10 px-4 py-2 font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-500/20 dark:text-indigo-400">
+                        <button className="mt-3 rounded-xl bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-500 shadow-sm transition hover:bg-emerald-500/20">
                           Download Leavepass
                         </button>
                       )}
@@ -678,14 +678,6 @@ export default function StudentDashboard() {
             description="Analyze your progress, feedback, weak areas, leaderboard rank and adaptive practice suggestions."
           />
 
-          <div className={cardClass}>
-            <Charts
-              title1="Performance Trend"
-              title2="Weekly Performance"
-              data={data.chartData}
-            />
-          </div>
-
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             <div className={cardClass}>
               <h2 className="mb-2 text-xl font-black text-gold-600 dark:text-blue-400">
@@ -704,39 +696,6 @@ export default function StudentDashboard() {
                 {data.weakArea}
               </p>
             </div>
-          </div>
-
-          <div className={`mt-8 ${cardClass}`}>
-            <h2 className="mb-3 text-xl font-black text-gold-600 dark:text-blue-400">
-              Leaderboard
-            </h2>
-            <p>
-              <b>Student:</b> {data.leaderboardName}
-            </p>
-            <p>
-              <b>Rank:</b> #{data.rank}
-            </p>
-            <p>
-              <b>Competitor:</b> {data.nearestCompetitor} +
-              {data.competitorDelta}
-            </p>
-          </div>
-
-          <div className={`mt-8 ${cardClass}`}>
-            <h2 className="mb-3 text-xl font-black text-gold-600 dark:text-blue-400">
-              Adaptive Practice
-            </h2>
-            <p>
-              <b>Topic:</b> {data.recommendedTopic}
-            </p>
-            <p>
-              <b>Level:</b> {data.practiceLevel}
-            </p>
-            <p>
-              <b>Questions:</b> {data.practiceQuestions}
-            </p>
-
-            <button className={`mt-4 ${buttonClass}`}>Start Practice</button>
           </div>
         </>
       )}

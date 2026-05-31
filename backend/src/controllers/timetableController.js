@@ -81,8 +81,10 @@ const getMySchedule = async (req, res, next) => {
     const institutionId = req.tenant ? req.tenant._id : req.user.institutionId;
     let query = { institutionId };
 
-    if (req.user.role === "faculty" || req.user.role === "hod") {
+    if (req.user.role === "faculty") {
       query.facultyId = req.user._id;
+    } else if (req.user.role === "hod") {
+      query.department = new RegExp(`^${req.user.department}$`, 'i');
     } else if (req.user.role === "student") {
       if (!req.user.semester) {
         return res.status(200).json({ success: true, schedule: [] });
