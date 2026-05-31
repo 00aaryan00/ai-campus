@@ -92,6 +92,7 @@ export default function HODDashboard() {
   const [eventVenue, setEventVenue] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventDesc, setEventDesc] = useState("");
+  const [eventType, setEventType] = useState<"event" | "notification">("event");
   const [eventFile, setEventFile] = useState<File | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(
@@ -160,7 +161,8 @@ export default function HODDashboard() {
   }, []);
 
   const handlePublishEvent = async () => {
-    if (!eventTitle || !eventVenue || !eventDate) return alert("Please fill title, venue, and date.");
+    if (!eventTitle) return alert("Please fill the title.");
+    if (eventType === 'event' && (!eventVenue || !eventDate)) return alert("Please fill venue and date for events.");
     try {
       setIsPublishing(true);
       const token = localStorage.getItem("authToken") || "";
@@ -169,8 +171,9 @@ export default function HODDashboard() {
       const formData = new FormData();
       formData.append("title", eventTitle);
       formData.append("venue", eventVenue);
-      formData.append("date", eventDate);
+      formData.append("date", eventDate || new Date().toISOString());
       formData.append("description", eventDesc);
+      formData.append("type", eventType);
       if (eventFile) {
         formData.append("file", eventFile);
       }
@@ -183,18 +186,18 @@ export default function HODDashboard() {
         setEventDate("");
         setEventDesc("");
         setEventFile(null);
-        alert("Event published successfully!");
+        alert(`${eventType === 'event' ? 'Event' : 'Notification'} published successfully!`);
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to publish event");
+      alert(`Failed to publish ${eventType}`);
     } finally {
       setIsPublishing(false);
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm("Are you sure you want to delete this event?")) return;
+  const handleDeleteEvent = async (eventId: string, type?: string) => {
+    if (!confirm(`Are you sure you want to delete this ${type === 'notification' ? 'notification' : 'event'}?`)) return;
     try {
       const token = localStorage.getItem("authToken") || "";
       if (!token || !tenantSlug) return;
@@ -205,7 +208,7 @@ export default function HODDashboard() {
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to delete event");
+      alert(`Failed to delete ${type === 'notification' ? 'notification' : 'event'}`);
     }
   };
 
@@ -462,116 +465,141 @@ export default function HODDashboard() {
       {activeTab === "events" && (
         <>
           <SectionHeader
-            title="Institutional Events"
-            description="Create and manage institutional events for your department."
+            title="Institutional Updates"
+            description="Create and manage institutional updates for your department."
           />
 
           <div className={card}>
             <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
-              📅 Create New Event
+              Publish Update
             </h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Event Title" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-              <input type="text" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} placeholder="Venue" className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-              <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-            </div>
+            {/* Event Type Selection */}
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <input type="radio" name="eventType" value="event" checked={eventType === 'event'} onChange={() => setEventType('event')} />
+                  Event (Has Date/Venue)
+                </label>
+                <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                  <input type="radio" name="eventType" value="notification" checked={eventType === 'notification'} onChange={() => setEventType('notification')} />
+                  Notification (Announcement)
+                </label>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <input type="text" placeholder={eventType === 'event' ? "Event Title" : "Notification Title"} value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                
+                {eventType === 'event' && (
+                  <>
+                    <input type="text" placeholder="Venue" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                    <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                  </>
+                )}
+              </div>
             <textarea value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             <div className="mt-4">
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-gold-500 dark:border-blue-500/20 dark:bg-[#111B44] dark:hover:border-blue-400">
                 <span className="text-2xl">📎</span>
                 <div>
-                  <p className="font-semibold text-slate-700 dark:text-white">Upload Notice / Schedule</p>
+                  <p className="font-semibold text-slate-700 dark:text-white">Upload Document (Optional)</p>
                   <p className="text-sm text-slate-400">{eventFile ? eventFile.name : "PDF, DOCX, JPG, PNG (Max 10MB)"}</p>
                 </div>
                 <input type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
               </label>
             </div>
             <button onClick={handlePublishEvent} disabled={isPublishing} className="mt-5 rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-              {isPublishing ? "Publishing..." : "Publish Event"}
+              {isPublishing ? "Publishing..." : "Publish Update"}
             </button>
           </div>
 
-          <div className={`mt-6 ${card}`}>
-            <h2 className="mb-4 text-xl font-black text-accent-blue">
-              📋 Upcoming Events
-            </h2>
-            <div className="space-y-3">
-              {events.length === 0 ? (
-                <p className="text-slate-500">No events scheduled.</p>
-              ) : (
-                events.map((evt) => (
-                  <div key={evt._id} className={inner}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-lg font-bold">{evt.title}</p>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                          📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
-                          {evt.targetAudience !== 'all' && (
-                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
-                              Dept: {evt.targetAudience.toUpperCase()}
-                            </span>
-                          )}
-                        </p>
-                        {evt.description && (
-                          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
-                        )}
-                        {evt.fileUrl && (
-                          <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
-                            📎 View Attachment
-                          </a>
-                        )}
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-blue-500/10 dark:bg-[#0B1437]">
+              <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-white">
+                📢 Notifications
+              </h2>
+              <div className="space-y-4">
+                {events.filter(e => e.type === 'notification').length === 0 ? (
+                  <p className="text-sm text-slate-500">No recent notifications.</p>
+                ) : (
+                  events.filter(e => e.type === 'notification').map((evt) => (
+                    <div key={evt._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-blue-500/5 dark:bg-blue-900/10 dark:hover:bg-blue-900/20">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
+                        <span className="text-xs text-slate-400">
+                          🗓️ {new Date(evt.createdAt || evt.date).toLocaleDateString()}
+                        </span>
                       </div>
-                      {/* Only allow deleting if HOD is the creator, but for simplicity, we allow deleting their dept events */}
+                      <div className="mt-2 flex gap-2">
+                        <span className="inline-block rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                          {evt.targetAudience === 'all' ? 'Global' : evt.targetAudience.toUpperCase()}
+                        </span>
+                      </div>
+                      {evt.description && (
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                      )}
+                      {evt.fileUrl && (
+                        <a href={evt.fileUrl.startsWith('http') ? evt.fileUrl : `${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                          📎 View Attachment
+                        </a>
+                      )}
                       {evt.targetAudience !== 'all' && (
-                        <button onClick={() => handleDeleteEvent(evt._id)} className="text-red-500 hover:text-red-700 font-bold p-2" title="Delete Event">
-                          ✕
-                        </button>
+                        <div className="mt-2 text-right">
+                          <button onClick={() => handleDeleteEvent(evt._id, evt.type)} className="text-red-500 hover:text-red-700 font-bold p-1 text-sm" title="Delete">
+                            Delete
+                          </button>
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 dark:border-blue-500/10 dark:bg-[#0B1437]">
+              <h2 className="mb-4 flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-white">
+                📅 Events
+              </h2>
+              <div className="space-y-4">
+                {events.filter(e => e.type === 'event' || !e.type).length === 0 ? (
+                  <p className="text-sm text-slate-500">No upcoming events.</p>
+                ) : (
+                  events.filter(e => e.type === 'event' || !e.type).map((evt) => (
+                    <div key={evt._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-blue-500/5 dark:bg-blue-900/10 dark:hover:bg-blue-900/20">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
+                        <span className="text-xs text-slate-400">
+                          📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <span className="inline-block rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                          {evt.targetAudience === 'all' ? 'Global' : evt.targetAudience.toUpperCase()}
+                        </span>
+                      </div>
+                      {evt.description && (
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                      )}
+                      {evt.fileUrl && (
+                        <a href={evt.fileUrl.startsWith('http') ? evt.fileUrl : `${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                          📎 View Attachment
+                        </a>
+                      )}
+                      {evt.targetAudience !== 'all' && (
+                        <div className="mt-2 text-right">
+                          <button onClick={() => handleDeleteEvent(evt._id, evt.type)} className="text-red-500 hover:text-red-700 font-bold p-1 text-sm" title="Delete">
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </>
       )}
 
-      {activeTab === "notifications" && (
-        <>
-          <SectionHeader
-            title="Notifications"
-            description="View your recent notices, announcements, and alerts."
-          />
-          <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
-              📢 Notice Board
-            </h2>
-            <div className="space-y-3">
-              <div className={inner}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Mid-Semester Exam Schedule Released</p>
-                  <span className="text-xs text-slate-400">2 hours ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">The mid-semester examination timetable for all branches has been published. Please review and inform your students.</p>
-              </div>
-              <div className={inner}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Faculty Meeting — Friday 3 PM</p>
-                  <span className="text-xs text-slate-400">1 day ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">All HODs and faculty are requested to attend the meeting in Conference Hall B regarding curriculum revisions.</p>
-              </div>
-              <div className={inner}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Lab Equipment Maintenance</p>
-                  <span className="text-xs text-slate-400">3 days ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Scheduled maintenance for all CSE labs on Saturday. Labs will be unavailable from 9 AM to 5 PM.</p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+
     </MainLayout>
   );
 }

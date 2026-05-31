@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ThemeToggle from "../components/ThemeToggle";
@@ -30,7 +30,7 @@ const roleTabs = {
     { id: "leave", label: "Leave Application", icon: <FileText size={20} /> },
     { id: "exams", label: "Exams", icon: <FlaskConical size={20} /> },
     { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
-    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
+    { id: "events", label: "Updates", icon: <Bell size={20} /> },
   ],
   faculty: [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
@@ -39,16 +39,14 @@ const roleTabs = {
     { id: "attendance", label: "Attendance", icon: <CheckCircle size={20} /> },
     { id: "exams", label: "Create Exam", icon: <FlaskConical size={20} /> },
     { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
-    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
-    { id: "events", label: "Events", icon: <Calendar size={20} /> },
+    { id: "events", label: "Updates", icon: <Bell size={20} /> },
   ],
   hod: [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
     { id: "leaves", label: "Leave Monitoring", icon: <FileText size={20} /> },
     { id: "timetable", label: "Timetable", icon: <CalendarDays size={20} /> },
     { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
-    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
-    { id: "events", label: "Events", icon: <Calendar size={20} /> },
+    { id: "events", label: "Updates", icon: <Bell size={20} /> },
   ],
   principal: [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
@@ -56,8 +54,7 @@ const roleTabs = {
     { id: "timetable", label: "Timetable Upload", icon: <CalendarDays size={20} /> },
     { id: "alerts", label: "Smart Alerts", icon: <AlertTriangle size={20} /> },
     { id: "performance", label: "Performance", icon: <TrendingUp size={20} /> },
-    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
-    { id: "events", label: "Events", icon: <Calendar size={20} /> },
+    { id: "events", label: "Updates", icon: <Bell size={20} /> },
   ],
 };
 
@@ -66,7 +63,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState((location.state as any)?.tab || "dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { logout } = useAuth();
+
+  useEffect(() => {
+    const handler = (e: any) => setUnreadCount(e.detail);
+    window.addEventListener("updateUnreadCount", handler);
+    return () => window.removeEventListener("updateUnreadCount", handler);
+  }, []);
 
   const role = location.pathname.includes("faculty")
     ? "faculty"
@@ -139,6 +143,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 >
                   <span className="flex items-center justify-center w-6 h-6">{tab.icon}</span>
                   {tab.label}
+                  {tab.id === 'events' && unreadCount > 0 && (
+                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -185,6 +194,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
                     }`}
                   >
                     {tab.icon} {tab.label}
+                    {tab.id === 'events' && unreadCount > 0 && (
+                      <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                        {unreadCount}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import Charts from "../components/Charts";
@@ -99,6 +99,20 @@ export default function TeacherDashboard() {
   const [data, setData] = useState<TeacherData | null>(null);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [lastViewedTime, setLastViewedTime] = useState<number>(Date.now());
+  const lastViewedTimeRef = useRef(lastViewedTime);
+
+  // Sync ref with state
+  useEffect(() => {
+    lastViewedTimeRef.current = lastViewedTime;
+  }, [lastViewedTime]);
+
+  useEffect(() => {
+    if (activeTab === "notifications") {
+      setLastViewedTime(Date.now());
+      window.dispatchEvent(new CustomEvent("updateUnreadCount", { detail: 0 }));
+    }
+  }, [activeTab]);
   
   const [examType, setExamType] = useState<"" | "common" | "adaptive">("");
   const [commonDifficulty, setCommonDifficulty] = useState<"" | "easy" | "medium" | "hard">("");
@@ -150,22 +164,35 @@ export default function TeacherDashboard() {
         console.error("Failed to fetch schedule", err);
       }
     };
+    
+    const fetchEvents = async () => {
+      if (!tenantSlug || !token) return;
+      try {
+        const res = await eventApi.getEvents(token, tenantSlug);
+        if (res.success) {
+          setEvents(res.events);
+
+          const newCount = res.events.filter((e: any) => {
+            const itemTime = new Date(e.createdAt || e.date).getTime();
+            return itemTime > lastViewedTimeRef.current;
+          }).length;
+
+          if (newCount > 0) {
+            window.dispatchEvent(new CustomEvent("updateUnreadCount", { detail: newCount }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch events", err);
+      }
+    };
+
     if (tenantSlug) {
       loadSchedule();
-      const fetchEvents = async () => {
-        try {
-          const token = localStorage.getItem("authToken") || "";
-          if (tenantSlug && token) {
-            const res = await eventApi.getEvents(token, tenantSlug);
-            if (res.success) setEvents(res.events);
-          }
-        } catch (err) {
-          console.error("Failed to fetch events", err);
-        }
-      };
       fetchEvents();
+      const interval = setInterval(fetchEvents, 60000);
+      return () => clearInterval(interval);
     }
-  }, [tenantSlug]);
+  }, [tenantSlug, token]);
 
   // Derived filtered schedules based on the new backend structure
   const todaySchedule = mySchedule.filter(item => item.dayOfWeek === day.dayName);
@@ -666,28 +693,19 @@ export default function TeacherDashboard() {
                 >
                   <p className="font-semibold">{student}</p>
 
-                  {/* <div className="flex gap-2">
-                    <button 
-                    className="rounded-xl bg-accent-emerald px-4 py-2 text-sm font-bold text-navy-900">
+                  <div className="flex gap-2">
+                    <button
+                      className="rounded-xl bg-green-600 hover:bg-green-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
+                    >
                       Present
                     </button>
-                    <button className="rounded-xl bg-accent-rose px-4 py-2 text-sm font-bold text-navy-900">
+
+                    <button
+                      className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
+                    >
                       Absent
                     </button>
-                  </div> */}
-                  <div className="flex gap-2">
-  <button
-    className="rounded-xl bg-green-600 hover:bg-green-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
-  >
-    Present
-  </button>
-
-  <button
-    className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-lg"
-  >
-    Absent
-  </button>
-</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1096,97 +1114,84 @@ export default function TeacherDashboard() {
       {activeTab === "events" && (
         <>
           <SectionHeader
-            title="Institutional Events"
+            title="Institutional Updates"
             description="View upcoming events, notices and schedules published by the HOD and Principal."
           />
-
-          <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
-              📅 Upcoming Events
-            </h2>
-            <div className="space-y-3">
-              {events.length === 0 ? (
-                <p className="text-slate-500">No events scheduled.</p>
-              ) : (
-                events.map((evt) => (
-                  <div key={evt._id} className={inner}>
-                    <p className="text-lg font-bold">{evt.title}</p>
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
-                    </p>
-                    {evt.description && (
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
-                    )}
-                    {evt.fileUrl && (
-                      <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
-                        📎 View Attachment
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className={`mt-6 ${card}`}>
-            <h2 className="mb-4 text-xl font-black text-accent-blue">
-              📎 Attached Documents
-            </h2>
-            <div className="space-y-3">
-              <div className={`${inner} flex items-center justify-between`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📄</span>
-                  <div>
-                    <p className="font-semibold">Tech_Fest_Schedule_2026.pdf</p>
-                    <p className="text-xs text-slate-400">Uploaded by HOD CSE &middot; 2.4 MB</p>
-                  </div>
-                </div>
-                <button className="rounded-lg bg-gold-500/15 px-4 py-2 text-sm font-bold text-gold-600 transition hover:bg-gold-500/25 dark:bg-blue-500/15 dark:text-blue-400 dark:hover:bg-blue-500/25">Download</button>
-              </div>
-              <div className={`${inner} flex items-center justify-between`}>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📄</span>
-                  <div>
-                    <p className="font-semibold">FDP_Workshop_Notice.pdf</p>
-                    <p className="text-xs text-slate-400">Uploaded by Principal &middot; 1.1 MB</p>
-                  </div>
-                </div>
-                <button className="rounded-lg bg-gold-500/15 px-4 py-2 text-sm font-bold text-gold-600 transition hover:bg-gold-500/25 dark:bg-blue-500/15 dark:text-blue-400 dark:hover:bg-blue-500/25">Download</button>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <div className={card}>
+              <h2 className="mb-4 text-xl font-black text-accent-blue">
+                📢 Notifications
+              </h2>
+              <div className="space-y-3">
+                {events.filter(e => e.type === 'notification').length === 0 ? (
+                  <p className="text-slate-500">No recent notifications.</p>
+                ) : (
+                  events.filter(e => e.type === 'notification').map((evt) => (
+                    <div key={evt._id} className={inner}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
+                        <span className="text-xs text-slate-400">
+                          🗓️ {new Date(evt.createdAt || evt.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <span className="inline-block rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                          {evt.targetAudience === 'all' ? 'Global' : evt.targetAudience.toUpperCase()}
+                        </span>
+                      </div>
+                      {evt.description && (
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                      )}
+                      {evt.fileUrl && (
+                        <a href={evt.fileUrl.startsWith('http') ? evt.fileUrl : `${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                          📎 View Attachment
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
-          </div>
-        </>
-      )}
 
-      {activeTab === "notifications" && (
-        <>
-          <SectionHeader
-            title="Notifications"
-            description="View your recent notices, announcements, and alerts."
-          />
-          <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
-              📢 Notice Board
-            </h2>
-            <div className="space-y-3">
-              <div className={inner}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Mid-Semester Exam Schedule Released</p>
-                  <span className="text-xs text-slate-400">2 hours ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">The mid-semester examination timetable has been published by the HOD. Please prepare your classes accordingly.</p>
-              </div>
-              <div className={inner}>
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">Faculty Meeting — Friday 3 PM</p>
-                  <span className="text-xs text-slate-400">1 day ago</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">All faculty members are requested to attend the meeting in Conference Hall B regarding curriculum revisions.</p>
+            <div className={card}>
+              <h2 className="mb-4 text-xl font-black text-accent-blue">
+                📅 Events
+              </h2>
+              <div className="space-y-3">
+                {events.filter(e => e.type === 'event' || !e.type).length === 0 ? (
+                  <p className="text-slate-500">No upcoming events.</p>
+                ) : (
+                  events.filter(e => e.type === 'event' || !e.type).map((evt) => (
+                    <div key={evt._id} className={inner}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
+                        <span className="text-xs text-slate-400">
+                          📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <span className="inline-block rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                          {evt.targetAudience === 'all' ? 'Global' : evt.targetAudience.toUpperCase()}
+                        </span>
+                      </div>
+                      {evt.description && (
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{evt.description}</p>
+                      )}
+                      {evt.fileUrl && (
+                        <a href={evt.fileUrl.startsWith('http') ? evt.fileUrl : `${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                          📎 View Attachment
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
         </>
       )}
+
+
     </MainLayout>
   );
 }

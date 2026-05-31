@@ -61,6 +61,10 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    semesterUpdatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

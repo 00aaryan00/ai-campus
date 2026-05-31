@@ -198,12 +198,22 @@ export default function Signup() {
                     placeholder={emailFieldLabel}
                     className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
                   />
-                  <input
+                  <select
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="Department (e.g. CSE)"
-                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
-                  />
+                    className={`w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all ${department === "" ? "text-slate-400" : "text-white"}`}
+                    required
+                  >
+                    <option value="" disabled>Select Department</option>
+                    <option value="CSE">Computer Science & Engineering (CSE)</option>
+                    <option value="ECE">Electronics & Communication (ECE)</option>
+                    <option value="ME">Mechanical Engineering (ME)</option>
+                    <option value="CE">Civil Engineering (CE)</option>
+                    <option value="EE">Electrical Engineering (EE)</option>
+                    <option value="IT">Information Technology (IT)</option>
+                    <option value="AI">Artificial Intelligence (AI)</option>
+                    <option value="OTHER">Other / General</option>
+                  </select>
                 </div>
                 <div className="mt-6 flex gap-3">
                   <button onClick={() => setStep(1)} className="flex-1 rounded-xl border border-white/20 py-3">

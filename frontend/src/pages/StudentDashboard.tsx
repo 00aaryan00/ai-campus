@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams} from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
 import Charts from "../components/Charts";
@@ -76,6 +76,21 @@ export default function StudentDashboard() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [lastViewedTime, setLastViewedTime] = useState<number>(Date.now());
+  const lastViewedTimeRef = useRef(lastViewedTime);
+  const [isSemesterModalOpen, setIsSemesterModalOpen] = useState(false);
+
+  // Sync ref with state
+  useEffect(() => {
+    lastViewedTimeRef.current = lastViewedTime;
+  }, [lastViewedTime]);
+
+  useEffect(() => {
+    if (activeTab === "notifications") {
+      setLastViewedTime(Date.now());
+      window.dispatchEvent(new CustomEvent("updateUnreadCount", { detail: 0 }));
+    }
+  }, [activeTab]);
   const [data, setData] = useState<StudentData | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
 
@@ -187,13 +202,29 @@ export default function StudentDashboard() {
         const token = localStorage.getItem("authToken") || "";
         if (tenantSlug && token) {
           const res = await eventApi.getEvents(token, tenantSlug);
-          if (res.success) setEvents(res.events);
+          if (res.success) {
+            setEvents(res.events);
+            
+            // Calculate unread items
+            const newCount = res.events.filter((e: any) => {
+              const itemTime = new Date(e.createdAt || e.date).getTime();
+              return itemTime > lastViewedTimeRef.current;
+            }).length;
+
+            if (newCount > 0) {
+              window.dispatchEvent(new CustomEvent("updateUnreadCount", { detail: newCount }));
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to fetch events", err);
       }
     };
+    
     fetchEvents();
+    const interval = setInterval(fetchEvents, 60000); // Poll every 60 seconds
+
+    return () => clearInterval(interval);
   }, [tenantSlug, user?.id]);
 
   useEffect(() => {
@@ -267,7 +298,11 @@ export default function StudentDashboard() {
   const metaParts = [];
   if (user?.enrollmentNumber) metaParts.push(user.enrollmentNumber.trim());
   if (user?.department) metaParts.push(user.department.trim().toUpperCase());
-  if (user?.semester) metaParts.push(` ${user.semester}`);
+  if (user?.semester) {
+    const semMatch = user.semester.match(/\d+/);
+    const semNum = semMatch ? semMatch[0] : user.semester;
+    metaParts.push(`Semester ${semNum}`);
+  }
 
   const studentMeta = metaParts.length > 0 
     ? metaParts.join(" | ") 
@@ -275,7 +310,10 @@ export default function StudentDashboard() {
 
   return (
     <MainLayout>
-      <StudentSemesterModal />
+      <StudentSemesterModal 
+        isOpen={isSemesterModalOpen} 
+        onClose={() => setIsSemesterModalOpen(false)} 
+      />
       <div className="mb-8">
         <h1 className="text-4xl font-black text-slate-900 dark:text-white">
           Student Dashboard
@@ -283,6 +321,14 @@ export default function StudentDashboard() {
 
         <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
           Welcome Student {displayName} 👋 | {studentMeta}
+          {user?.semester && (
+            <button 
+              onClick={() => setIsSemesterModalOpen(true)}
+              className="ml-3 text-sm text-gold-500 hover:text-gold-600 underline font-medium transition"
+            >
+              Change Semester
+            </button>
+          )}
         </p>
       </div>
 
@@ -695,44 +741,81 @@ export default function StudentDashboard() {
         </>
       )}
 
-      {activeTab === "notifications" && (
+      {activeTab === "events" && (
         <>
           <SectionHeader
-            title="Notifications"
-            description="View your recent notices, announcements, and alerts."
+            title="Updates"
+            description="View your recent notices, announcements, and upcoming events."
           />
-          <div className={cardClass}>
-            <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
-              📢 Notice Board
-            </h2>
-            <div className="space-y-3">
-              {events.length === 0 ? (
-                <p className="text-slate-500">No events/notices scheduled.</p>
-              ) : (
-                events.map((evt) => (
-                  <div key={evt._id} className={innerCardClass}>
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold">{evt.title}</p>
-                      <span className="text-xs text-slate-400">
-                        📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
-                        {evt.targetAudience !== 'all' && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
-                            Dept: {evt.targetAudience.toUpperCase()}
-                          </span>
-                        )}
-                      </span>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className={cardClass}>
+              <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
+                📢 Notice Board
+              </h2>
+              <div className="space-y-3">
+                {events.filter(e => e.type === 'notification').length === 0 ? (
+                  <p className="text-slate-500">No recent notifications.</p>
+                ) : (
+                  events.filter(e => e.type === 'notification').map((evt) => (
+                    <div key={evt._id} className={innerCardClass}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold">{evt.title}</p>
+                        <span className="text-xs text-slate-400">
+                          🗓️ {new Date(evt.createdAt || evt.date).toLocaleDateString()}
+                          {evt.targetAudience !== 'all' && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                              Dept: {evt.targetAudience.toUpperCase()}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {evt.description && (
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{evt.description}</p>
+                      )}
+                      {evt.fileUrl && (
+                        <a href={evt.fileUrl.startsWith('http') ? evt.fileUrl : `${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                          📎 View Attachment
+                        </a>
+                      )}
                     </div>
-                    {evt.description && (
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{evt.description}</p>
-                    )}
-                    {evt.fileUrl && (
-                      <a href={`${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
-                        📎 View Attachment
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className={cardClass}>
+              <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
+                📅 Upcoming Events
+              </h2>
+              <div className="space-y-3">
+                {events.filter(e => e.type === 'event' || !e.type).length === 0 ? (
+                  <p className="text-slate-500">No events scheduled.</p>
+                ) : (
+                  events.filter(e => e.type === 'event' || !e.type).map((evt) => (
+                    <div key={evt._id} className={innerCardClass}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold">{evt.title}</p>
+                        <span className="text-xs text-slate-400">
+                          📍 {evt.venue} &middot; 🗓️ {new Date(evt.date).toLocaleDateString()}
+                          {evt.targetAudience !== 'all' && (
+                            <span className="ml-2 inline-flex items-center rounded-full bg-slate-200 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                              Dept: {evt.targetAudience.toUpperCase()}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {evt.description && (
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{evt.description}</p>
+                      )}
+                      {evt.fileUrl && (
+                        <a href={evt.fileUrl.startsWith('http') ? evt.fileUrl : `${API_BASE_URL}${evt.fileUrl}`} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-500 hover:underline">
+                          📎 View Attachment
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </>

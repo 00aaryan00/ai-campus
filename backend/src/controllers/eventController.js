@@ -1,29 +1,42 @@
 const Event = require("../models/Event");
+const imagekit = require("../config/imagekit");
 
 const createEvent = async (req, res) => {
   try {
     const { tenantSlug } = req.params;
-    const { title, venue, date, description, targetAudience } = req.body;
+    const { title, venue, date, description, targetAudience, type } = req.body;
     
     // Only institution_admin or hod can create events
     if (req.user.role !== "institution_admin" && req.user.role !== "hod") {
       return res.status(403).json({ success: false, message: "Only principals or HODs can create events." });
     }
 
-    if (!title || !venue || !date) {
-      return res.status(400).json({ success: false, message: "Missing required fields." });
+    if (!title) {
+      return res.status(400).json({ success: false, message: "Missing title." });
+    }
+    if (type !== 'notification' && (!venue || !date)) {
+      return res.status(400).json({ success: false, message: "Missing venue or date for event." });
     }
 
     // Determine targetAudience based on who is uploading
-    let computedAudience = "all";
+    let computedAudience = targetAudience || "all";
     if (req.user.role === "hod") {
       computedAudience = req.user.department || "all";
     }
 
     let fileUrl = "";
     if (req.file) {
-      // Return relative path to the frontend, e.g., /uploads/filename.pdf
-      fileUrl = `/uploads/${req.file.filename}`;
+      try {
+        const response = await imagekit.upload({
+          file: req.file.buffer.toString("base64"), // required
+          fileName: req.file.originalname, // required
+          folder: "/ai_campus_events",
+        });
+        fileUrl = response.url;
+      } catch (uploadError) {
+        console.error("ImageKit upload error:", uploadError);
+        return res.status(500).json({ success: false, message: "File upload failed." });
+      }
     }
 
     const event = new Event({
@@ -33,6 +46,7 @@ const createEvent = async (req, res) => {
       description,
       targetAudience: computedAudience,
       fileUrl,
+      type: type === 'notification' ? 'notification' : 'event',
       tenantSlug,
       createdBy: req.user.id,
     });
@@ -57,14 +71,19 @@ const getEvents = async (req, res) => {
     if (role !== "institution_admin") {
       const userDept = req.user.department;
       if (userDept) {
-        query.targetAudience = { $in: ["all", userDept] };
+        query.targetAudience = { 
+          $in: [
+            /^all$/i,
+            new RegExp(`^${userDept.trim()}$`, "i")
+          ] 
+        };
       } else {
-        query.targetAudience = "all";
+        query.targetAudience = /^all$/i;
       }
     }
 
-    // Sort by date upcoming
-    const events = await Event.find(query).sort({ date: 1 });
+    // Sort by createdAt descending
+    const events = await Event.find(query).sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, events });
   } catch (error) {
@@ -84,7 +103,7 @@ const deleteEvent = async (req, res) => {
     // HODs can only delete events in their department
     let query = { _id: eventId, tenantSlug };
     if (req.user.role === "hod") {
-      query.targetAudience = req.user.department;
+      query.targetAudience = new RegExp(`^${req.user.department.trim()}$`, "i");
       query.createdBy = req.user.id;
     }
 

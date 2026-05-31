@@ -321,7 +321,15 @@ const updateSemester = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Only students can update semester" });
     }
 
+    if (req.user.semesterUpdatedAt) {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      if (req.user.semesterUpdatedAt > thirtyDaysAgo) {
+        return res.status(403).json({ success: false, message: "You can only update your semester once every 30 days. Please contact your institution admin." });
+      }
+    }
+
     req.user.semester = semester;
+    req.user.semesterUpdatedAt = new Date();
     await req.user.save();
 
     return res.status(200).json({

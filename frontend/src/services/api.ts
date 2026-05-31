@@ -33,7 +33,9 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.message || "Request failed");
+    const error: any = new Error(payload?.message || "Request failed");
+    error.status = response.status;
+    throw error;
   }
 
   return payload as T;

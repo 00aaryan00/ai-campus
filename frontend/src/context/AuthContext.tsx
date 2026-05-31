@@ -82,14 +82,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(hydratedUser);
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify(hydratedUser));
         localStorage.setItem(AUTH_ROLE_KEY, hydratedUser.role);
-      } catch {
-        setUser(null);
-        setToken(null);
-        setTenantSlug(null);
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem(AUTH_USER_KEY);
-        localStorage.removeItem(AUTH_ROLE_KEY);
-        localStorage.removeItem(AUTH_TENANT_KEY);
+      } catch (err: any) {
+        if (err?.status === 401 || err?.status === 403) {
+          setUser(null);
+          setToken(null);
+          setTenantSlug(null);
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          localStorage.removeItem(AUTH_USER_KEY);
+          localStorage.removeItem(AUTH_ROLE_KEY);
+          localStorage.removeItem(AUTH_TENANT_KEY);
+        } else {
+          console.warn("Hydration failed but keeping token (e.g. network error or server reboot).");
+        }
       }
     };
 

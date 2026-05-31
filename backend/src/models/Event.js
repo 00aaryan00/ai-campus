@@ -3,10 +3,11 @@ const mongoose = require("mongoose");
 const eventSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    venue: { type: String, required: true },
-    date: { type: Date, required: true },
+    venue: { type: String },
+    date: { type: Date },
     description: { type: String },
     fileUrl: { type: String }, // Path to the uploaded file (if any)
+    type: { type: String, enum: ['event', 'notification'], default: 'event' },
     targetAudience: { 
       type: String, 
       required: true 

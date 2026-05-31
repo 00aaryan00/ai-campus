@@ -3,16 +3,20 @@ import { useAuth } from "../context/AuthContext";
 import { API_BASE_URL } from "../services/api";
 
 
-export default function StudentSemesterModal() {
+interface Props {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function StudentSemesterModal({ isOpen, onClose }: Props = {}) {
   const { user, token, tenantSlug, updateUser } = useAuth();
   const [semester, setSemester] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Only show if the user is a student and has NO semester
-  if (!user || user.role !== "student" || user.semester) {
-    return null;
-  }
+  // Show if user is a student, and either they have no semester OR isOpen is true
+  if (!user || user.role !== "student") return null;
+  if (user.semester && !isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +55,7 @@ export default function StudentSemesterModal() {
       }
 
       updateUser({ semester: data.user.semester });
+      if (onClose) onClose();
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -102,6 +107,17 @@ export default function StudentSemesterModal() {
           >
             {loading ? "Saving..." : "Confirm My Semester"}
           </button>
+          
+          {isOpen && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="w-full mt-3 rounded-xl border border-white/20 bg-transparent py-3 font-bold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          )}
         </form>
       </div>
     </div>
