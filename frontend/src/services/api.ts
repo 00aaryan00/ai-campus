@@ -345,12 +345,51 @@ type CreateTestResponse = {
 };
 
 export const facultyTestApi = {
-  createTest: (token: string, payload: CreateTestPayload, tenantSlug?: string) =>
-    request<CreateTestResponse>(tenantPath(tenantSlug || null, "/tests/create"), {
-      method: "POST",
+  getTests: (token: string, tenantSlug?: string, page = 1, limit = 10) =>
+    request<{ success: boolean; tests: any[]; totalPages: number; currentPage: number }>(
+      tenantPath(tenantSlug || null, `/tests?page=${page}&limit=${limit}`),
+      { token }
+    ),
+  deleteTest: (token: string, testId: string, tenantSlug?: string) =>
+    request<{ success: boolean; message: string }>(tenantPath(tenantSlug || null, `/tests/${testId}`), {
+      method: "DELETE",
       token,
-      body: payload,
     }),
+  createTest: (token: string, payload: CreateTestPayload, tenantSlug?: string) =>
+    request<{ success: boolean; message: string; test: any }>(
+      tenantPath(tenantSlug || null, "/tests/create"),
+      {
+        method: "POST",
+        token,
+        body: payload,
+      }
+    ),
+  saveDraftTest: (token: string, payload: CreateTestPayload, tenantSlug?: string) =>
+    request<{ success: boolean; message: string; test: any }>(
+      tenantPath(tenantSlug || null, "/tests/save-draft"),
+      {
+        method: "POST",
+        token,
+        body: payload,
+      }
+    ),
+  publishTest: (token: string, testId: string, tenantSlug?: string) =>
+    request<{ success: boolean; message: string; test: any }>(
+      tenantPath(tenantSlug || null, `/tests/${testId}/publish`),
+      {
+        method: "PUT",
+        token,
+      }
+    ),
+  toggleRoomAccess: (token: string, testId: string, action: "open" | "close", tenantSlug?: string) =>
+    request<{ success: boolean; message: string; test: any }>(
+      tenantPath(tenantSlug || null, `/tests/${testId}/room-access`),
+      {
+        method: "PUT",
+        token,
+        body: { action },
+      }
+    ),
 };
 
 type PlatformLoginResponse = {
@@ -676,6 +715,48 @@ export const leaveApi = {
 
   updateLeaveStatus: (token: string, tenantSlug: string, leaveId: string, status: "Approved" | "Rejected") =>
     request<{ success: boolean; message: string; leave: LeaveItem }>(tenantPath(tenantSlug, `/leaves/${leaveId}/status`), {
+      method: "PATCH",
+      token,
+      body: { status },
+    }),
+};
+
+export type FacultyLeaveItem = {
+  _id: string;
+  facultyId: string;
+  facultyName: string;
+  department: string;
+  reason: string;
+  fromDate: string;
+  toDate: string;
+  status: "Pending" | "Approved" | "Rejected";
+  fileUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export const facultyLeaveApi = {
+  applyLeave: (token: string, tenantSlug: string, formData: FormData) =>
+    request<{ success: boolean; message: string; leave: FacultyLeaveItem }>(tenantPath(tenantSlug, `/faculty-leaves/apply`), {
+      method: "POST",
+      token,
+      body: formData,
+    }),
+
+  getMyLeaves: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; leaves: FacultyLeaveItem[] }>(tenantPath(tenantSlug, `/faculty-leaves/my-leaves`), {
+      method: "GET",
+      token,
+    }),
+
+  getDepartmentLeaves: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; leaves: FacultyLeaveItem[] }>(tenantPath(tenantSlug, `/faculty-leaves/department-leaves`), {
+      method: "GET",
+      token,
+    }),
+
+  updateLeaveStatus: (token: string, tenantSlug: string, leaveId: string, status: "Approved" | "Rejected") =>
+    request<{ success: boolean; message: string; leave: FacultyLeaveItem }>(tenantPath(tenantSlug, `/faculty-leaves/${leaveId}/status`), {
       method: "PATCH",
       token,
       body: { status },

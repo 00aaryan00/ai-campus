@@ -1,6 +1,6 @@
 import studentImage from "../assets/student.png";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 
 import MainLayout from "../layout/MainLayout";
 import { useAuth } from "../context/AuthContext";
@@ -37,6 +37,7 @@ export default function TakeTest() {
   const { theme, toggleTheme } = useTheme();
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { tenantSlug } = useParams();
 
   const initialCode = useMemo(
     () => (params.get("code") || "").trim().toUpperCase(),
@@ -887,8 +888,8 @@ export default function TakeTest() {
               <span className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-400 mb-2">
                 <AlertTriangle size={20} /> Instructions
               </span>
-              <p className="text-amber-900 dark:text-amber-200/80 leading-relaxed text-sm">
-                {lobby.instructions || "Please read all questions carefully before answering. Do not refresh the page during the exam."}
+              <p className="whitespace-pre-wrap text-amber-900 dark:text-amber-200/80 leading-relaxed text-sm">
+                {lobby.instructions || "Please read all questions carefully before answering.\nDo not refresh the page during the exam."}
               </p>
             </div>
 
@@ -938,7 +939,7 @@ export default function TakeTest() {
             </div>
 
             <button
-              onClick={() => navigate("/student/dashboard")}
+              onClick={() => navigate(tenantSlug ? `/t/${tenantSlug}/student` : "/student/dashboard")}
               className="mt-10 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/20 px-8 py-3 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-white/20 transition-colors shadow-sm"
             >
               Return to Dashboard

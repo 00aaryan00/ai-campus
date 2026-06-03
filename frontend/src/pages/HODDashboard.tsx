@@ -5,7 +5,7 @@ import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { leaveApi, type LeaveItem } from "../services/api";
+import { leaveApi, facultyLeaveApi, type LeaveItem, type FacultyLeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { BarChart3, TrendingUp, MailX, Users, Building } from "lucide-react";
 import { useParams } from "react-router-dom";
@@ -57,12 +57,15 @@ export default function HODDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<HODData | null>(null);
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
+  const [showOnlyUnresponded, setShowOnlyUnresponded] = useState(false);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [eventTitle, setEventTitle] = useState("");
   const [eventVenue, setEventVenue] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventDesc, setEventDesc] = useState("");
   const [eventType, setEventType] = useState<"event" | "notification">("event");
+  const [facultyLeaves, setFacultyLeaves] = useState<FacultyLeaveItem[]>([]);
+  const [leaveTab, setLeaveTab] = useState<"student" | "faculty">("student");
   const [eventFile, setEventFile] = useState<File | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(
@@ -108,6 +111,10 @@ export default function HODDashboard() {
           const res = await leaveApi.getDepartmentLeaves(token, tenantSlug);
           if (res.success) {
             setLeaves(res.leaves);
+          }
+          const facultyRes = await facultyLeaveApi.getDepartmentLeaves(token, tenantSlug);
+          if (facultyRes.success) {
+            setFacultyLeaves(facultyRes.leaves);
           }
         }
       } catch (err) {
@@ -208,6 +215,19 @@ export default function HODDashboard() {
     }
   };
 
+  const updateFacultyLeave = async (id: string, status: "Approved" | "Rejected") => {
+    try {
+      const token = localStorage.getItem("authToken") || "";
+      if (tenantSlug && token) {
+        await facultyLeaveApi.updateLeaveStatus(token, tenantSlug, id, status);
+        const res = await facultyLeaveApi.getDepartmentLeaves(token, tenantSlug);
+        if (res.success) setFacultyLeaves(res.leaves);
+      }
+    } catch {
+      alert("Failed to update faculty leave status");
+    }
+  };
+
   if (!data) {
     return (
       <MainLayout>
@@ -296,16 +316,60 @@ export default function HODDashboard() {
           />
 
           <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-accent-blue">
-              Department Leave Requests
-            </h2>
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 dark:border-slate-700 pb-2">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setLeaveTab("student")}
+                  className={`font-semibold pb-2 flex items-center gap-2 ${leaveTab === "student" ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+                >
+                  Student Leaves
+                  {leaves.filter((l) => l.status === "Pending").length > 0 && (
+                    <span className="flex items-center justify-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                      {leaves.filter((l) => l.status === "Pending").length} new
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setLeaveTab("faculty")}
+                  className={`font-semibold pb-2 flex items-center gap-2 ${leaveTab === "faculty" ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+                >
+                  Faculty Leaves
+                  {facultyLeaves.filter((l) => l.status === "Pending").length > 0 && (
+                    <span className="flex items-center justify-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                      {facultyLeaves.filter((l) => l.status === "Pending").length} new
+                    </span>
+                  )}
+                </button>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:text-blue-600 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={showOnlyUnresponded}
+                  onChange={(e) => setShowOnlyUnresponded(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                Show only unresponded
+              </label>
+            </div>
 
-            {leaves.length > 0 ? (
-              <div className="space-y-4">
-                {leaves.map((leave) => (
+            {leaveTab === "student" && (
+              <>
+                <h2 className="mb-4 text-xl font-black text-accent-blue">
+                  Student Leave Requests
+                </h2>
+                {leaves.filter(l => !showOnlyUnresponded || l.status === "Pending").length > 0 ? (
+              <div className="max-h-[480px] overflow-y-auto pr-1 space-y-4">
+                {[...leaves].filter(l => !showOnlyUnresponded || l.status === "Pending").sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
                   <div key={leave._id} className={inner}>
                     <div className="flex items-center justify-between">
-                      <p><b>Name:</b> {leave.studentName}</p>
+                      <p className="flex items-center gap-2">
+                        <b>Name:</b> {leave.studentName}
+                        {leave.status === "Pending" && (
+                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                            New
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-400">
                         Updated: {new Date(leave.updatedAt).toLocaleString()}
                       </p>
@@ -359,6 +423,86 @@ export default function HODDashboard() {
                 <MailX size={18} /> No pending leave requests for {selectedBranch.toUpperCase()}
               </p>
             )}
+            </>
+          )}
+
+          {leaveTab === "faculty" && (
+            <>
+              <h2 className="mb-4 text-xl font-black text-accent-blue">
+                Faculty Leave Requests
+              </h2>
+              {facultyLeaves.filter(l => !showOnlyUnresponded || l.status === "Pending").length > 0 ? (
+                <div className="max-h-[480px] overflow-y-auto pr-1 space-y-4">
+                  {[...facultyLeaves].filter(l => !showOnlyUnresponded || l.status === "Pending").sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
+                    <div key={leave._id} className={inner}>
+                      <div className="flex items-center justify-between">
+                        <p className="flex items-center gap-2">
+                          <b>Name:</b> {leave.facultyName}
+                          {leave.status === "Pending" && (
+                            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                              New
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Updated: {new Date(leave.updatedAt || leave.createdAt || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                      <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                      <p className="whitespace-pre-wrap"><b>Reason:</b> {leave.reason}</p>
+                      
+                      {leave.fileUrl && (
+                        <div className="mt-2">
+                          <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-500 hover:underline">
+                            📄 View Attachment
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-blue-500/10">
+                        <p className="font-semibold">
+                          Status:{" "}
+                          <span
+                            className={
+                              leave.status === "Approved"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : leave.status === "Rejected"
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-amber-600 dark:text-amber-400"
+                            }
+                          >
+                            {leave.status}
+                          </span>
+                        </p>
+
+                        {leave.status === "Pending" && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => updateFacultyLeave(leave._id, "Approved")}
+                              className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => updateFacultyLeave(leave._id, "Rejected")}
+                              className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">
+                  No pending faculty leaves
+                </p>
+              )}
+            </>
+          )}
           </div>
         </>
       )}
@@ -519,7 +663,7 @@ export default function HODDashboard() {
                 {events.filter(e => e.type === 'notification').length === 0 ? (
                   <p className="text-sm text-slate-500">No recent notifications.</p>
                 ) : (
-                  events.filter(e => e.type === 'notification').map((evt) => (
+                  [...events].filter(e => e.type === 'notification').sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()).map((evt) => (
                     <div key={evt._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-blue-500/5 dark:bg-blue-900/10 dark:hover:bg-blue-900/20">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
@@ -561,7 +705,7 @@ export default function HODDashboard() {
                 {events.filter(e => e.type === 'event' || !e.type).length === 0 ? (
                   <p className="text-sm text-slate-500">No upcoming events.</p>
                 ) : (
-                  events.filter(e => e.type === 'event' || !e.type).map((evt) => (
+                  [...events].filter(e => e.type === 'event' || !e.type).sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()).map((evt) => (
                     <div key={evt._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-blue-500/5 dark:bg-blue-900/10 dark:hover:bg-blue-900/20">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>

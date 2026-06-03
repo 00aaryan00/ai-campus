@@ -12,6 +12,7 @@ const testRoutes = require("./routes/testRoutes");
 const timetableRoutes = require("./routes/timetableRoutes");
 const eventRoutes = require("./routes/eventRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
+const facultyLeaveRoutes = require("./routes/facultyLeaveRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const path = require("path");
@@ -163,6 +164,7 @@ tenantApiRouter.use("/results", resultRoutes);
 tenantApiRouter.use("/timetable", timetableRoutes);
 tenantApiRouter.use("/events", eventRoutes);
 tenantApiRouter.use("/leaves", leaveRoutes);
+tenantApiRouter.use("/faculty-leaves", facultyLeaveRoutes);
 tenantApiRouter.use("/attendance", attendanceRoutes);
 tenantApiRouter.use("/dashboard", dashboardRoutes);
 

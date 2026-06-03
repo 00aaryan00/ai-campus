@@ -12,7 +12,7 @@ import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
 import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
-import { facultyAiApi, facultyTestApi, eventApi, attendanceApi, dashboardApi, type EventItem } from "../services/api";
+import { facultyAiApi, facultyTestApi, eventApi, attendanceApi, dashboardApi, facultyLeaveApi, type EventItem, type FacultyLeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import type { AttendanceTest, AttendanceStudent } from "../services/api";
 
@@ -97,7 +97,6 @@ export default function TeacherDashboard() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<TeacherData | null>(null);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [lastViewedTime, setLastViewedTime] = useState<number>(Date.now());
   const lastViewedTimeRef = useRef(lastViewedTime);
@@ -121,6 +120,10 @@ export default function TeacherDashboard() {
   const [adaptiveQuestionCount, setAdaptiveQuestionCount] = useState(10);
   const [adaptiveTotalMarks, setAdaptiveTotalMarks] = useState(20);
   const [generatedExamCode, setGeneratedExamCode] = useState<string | null>(null);
+  const [examTab, setExamTab] = useState<"create" | "manage">("create");
+  const [myExams, setMyExams] = useState<any[]>([]);
+  const [examPage, setExamPage] = useState(1);
+  const [examTotalPages, setExamTotalPages] = useState(1);
   const [examTitle, setExamTitle] = useState("");
   const [examSubject, setExamSubject] = useState("");
   const [recommendedSubjects, setRecommendedSubjects] = useState([
@@ -158,6 +161,14 @@ export default function TeacherDashboard() {
   const [presentStudentIds, setPresentStudentIds] = useState<Set<string>>(new Set());
   const [isAttendanceSubmitted, setIsAttendanceSubmitted] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+
+  // Faculty Leaves State
+  const [myLeaves, setMyLeaves] = useState<FacultyLeaveItem[]>([]);
+  const [facultyLeaveReason, setFacultyLeaveReason] = useState("");
+  const [facultyFromDate, setFacultyFromDate] = useState("");
+  const [facultyToDate, setFacultyToDate] = useState("");
+  const [facultyLeaveFile, setFacultyLeaveFile] = useState<File | null>(null);
+  const [isSubmittingFacultyLeave, setIsSubmittingFacultyLeave] = useState(false);
 
   useEffect(() => {
     if (activeTab === "attendance" && tenantSlug && token) {
@@ -291,8 +302,83 @@ export default function TeacherDashboard() {
       }
     };
     fetchDashboardStats();
-    setLeaves([]);
+
+    const fetchMyLeaves = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (tenantSlug && token) {
+          const res = await facultyLeaveApi.getMyLeaves(token, tenantSlug);
+          if (res.success) setMyLeaves(res.leaves);
+        }
+      } catch (err) {
+        console.error("Failed to fetch my leaves", err);
+      }
+    };
+    fetchMyLeaves();
   }, [tenantSlug]);
+
+  useEffect(() => {
+    if (activeTab === "exams" && examTab === "manage") {
+      const fetchExams = async () => {
+        const token = localStorage.getItem("authToken");
+        if (token) {
+          try {
+            const res = await facultyTestApi.getTests(token, tenantSlug, examPage, 6);
+            if (res.success) {
+              setMyExams(res.tests);
+              setExamTotalPages(res.totalPages || 1);
+            }
+          } catch (err) {
+            console.error("Failed to fetch exams", err);
+          }
+        }
+      };
+      fetchExams();
+    }
+  }, [activeTab, examTab, examPage, tenantSlug]);
+
+  const handleDeleteExam = async (testId: string) => {
+    if (!window.confirm("Are you sure you want to delete this test? All questions and attempts will be permanently deleted!")) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    try {
+      const res = await facultyTestApi.deleteTest(token, testId, tenantSlug);
+      if (res.success) {
+        setMyExams((prev) => prev.filter((exam) => exam._id !== testId));
+      }
+    } catch (err) {
+      alert("Failed to delete test.");
+    }
+  };
+
+  const handlePublishTest = async (testId: string) => {
+    if (!window.confirm("Are you sure you want to publish this test? Students will be able to join using the room code.")) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    try {
+      const res = await facultyTestApi.publishTest(token, testId, tenantSlug);
+      if (res.success) {
+        setMyExams((prev) => prev.map((exam) => exam._id === testId ? { ...exam, status: "published", roomCode: res.test.roomCode } : exam));
+        alert(`Test published successfully! Room Code: ${res.test.roomCode}`);
+      }
+    } catch (err) {
+      alert("Failed to publish test.");
+    }
+  };
+
+  const handleToggleRoomAccess = async (testId: string, currentStatus: boolean) => {
+    const action = currentStatus ? "close" : "open";
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    try {
+      const res = await facultyTestApi.toggleRoomAccess(token, testId, action, tenantSlug);
+      if (res.success) {
+        setMyExams((prev) => prev.map((exam) => exam._id === testId ? { ...exam, roomCodeExpiresAt: res.test.roomCodeExpiresAt } : exam));
+      }
+    } catch (err) {
+      alert("Failed to toggle room access.");
+    }
+  };
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -307,10 +393,40 @@ export default function TeacherDashboard() {
     };
   }, []);
 
-  const update = (id: string, status: "Approved" | "Rejected") => {
-    setLeaves((previous) =>
-      previous.map((leave) => (leave.id === id ? { ...leave, status } : leave))
-    );
+
+
+  const handleApplyFacultyLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !tenantSlug) return;
+    if (!facultyLeaveReason || !facultyFromDate || !facultyToDate) {
+      alert("Please fill all required fields.");
+      return;
+    }
+
+    setIsSubmittingFacultyLeave(true);
+    try {
+      const formData = new FormData();
+      formData.append("reason", facultyLeaveReason);
+      formData.append("fromDate", facultyFromDate);
+      formData.append("toDate", facultyToDate);
+      if (facultyLeaveFile) {
+        formData.append("file", facultyLeaveFile);
+      }
+
+      await facultyLeaveApi.applyLeave(token, tenantSlug, formData);
+      alert("Leave application submitted successfully!");
+      setFacultyLeaveReason("");
+      setFacultyFromDate("");
+      setFacultyToDate("");
+      setFacultyLeaveFile(null);
+      
+      const res = await facultyLeaveApi.getMyLeaves(token, tenantSlug);
+      if (res.success) setMyLeaves(res.leaves);
+    } catch {
+      alert("Failed to submit leave request");
+    } finally {
+      setIsSubmittingFacultyLeave(false);
+    }
   };
 
   const updateQuestion = (
@@ -345,32 +461,15 @@ export default function TeacherDashboard() {
     }));
   };
 
-  const handleCreateExam = async () => {
-    if (!token) {
-      setCreateError("Please login again as faculty.");
-      return;
-    }
-
-    if (!examTitle.trim()) {
-      setCreateError("Exam title is required.");
-      return;
-    }
-
-    if (!generatedQuestionSets) {
-      setCreateError("Generate AI questions first.");
-      return;
-    }
-
-    if (!examType) {
-      setCreateError("Please select exam mode.");
-      return;
-    }
+  const getExamPayload = () => {
+    if (!token) return { error: "Please login again as faculty." };
+    if (!examTitle.trim()) return { error: "Exam title is required." };
+    if (!generatedQuestionSets) return { error: "Generate AI questions first." };
+    if (!examType) return { error: "Please select exam mode." };
 
     const isCommonMode = examType === "common";
     const sets = isCommonMode
-      ? {
-          common: generatedQuestionSets.common || [],
-        }
+      ? { common: generatedQuestionSets.common || [] }
       : {
           easy: generatedQuestionSets.easy || [],
           medium: generatedQuestionSets.medium || [],
@@ -378,50 +477,65 @@ export default function TeacherDashboard() {
         };
 
     if (isCommonMode && (!sets.common || sets.common.length === 0)) {
-      if (!commonDifficulty) {
-        setCreateError("Please select difficulty level for common mode.");
-        return;
-      }
-      setCreateError("Common mode requires generated common questions.");
-      return;
+      if (!commonDifficulty) return { error: "Please select difficulty level for common mode." };
+      return { error: "Common mode requires generated common questions." };
     }
 
-    if (
-      !isCommonMode &&
-      ((sets.easy || []).length === 0 || (sets.medium || []).length === 0 || (sets.hard || []).length === 0)
-    ) {
-      setCreateError("Adaptive mode requires easy, medium, and hard question sets.");
-      return;
+    if (!isCommonMode && ((sets.easy || []).length === 0 || (sets.medium || []).length === 0 || (sets.hard || []).length === 0)) {
+      return { error: "Adaptive mode requires easy, medium, and hard question sets." };
     }
 
     if (isCommonMode && (generatedQuestionSets.common || []).length < Math.max(1, commonQuestionCount)) {
-      setCreateError(`Need at least ${commonQuestionCount} generated common questions.`);
-      return;
+      return { error: `Need at least ${commonQuestionCount} generated common questions.` };
     }
 
-    if (
-      !isCommonMode &&
-      ((generatedQuestionSets.easy || []).length < Math.max(1, adaptiveQuestionCount) ||
-        (generatedQuestionSets.medium || []).length < Math.max(1, adaptiveQuestionCount) ||
-        (generatedQuestionSets.hard || []).length < Math.max(1, adaptiveQuestionCount))
-    ) {
-      setCreateError(`Need at least ${adaptiveQuestionCount} questions in each adaptive set.`);
-      return;
+    if (!isCommonMode && ((generatedQuestionSets.easy || []).length < Math.max(1, adaptiveQuestionCount) || (generatedQuestionSets.medium || []).length < Math.max(1, adaptiveQuestionCount) || (generatedQuestionSets.hard || []).length < Math.max(1, adaptiveQuestionCount))) {
+      return { error: `Need at least ${adaptiveQuestionCount} questions in each adaptive set.` };
     }
 
-    setCreateError("");
-    try {
-      const response = await facultyTestApi.createTest(token, {
+    return {
+      payload: {
         title: examTitle.trim(),
         subject: examSubject,
-        mode: isCommonMode ? "common" : "adaptive",
+        mode: isCommonMode ? "common" : "adaptive" as "common" | "adaptive",
         duration: Number(examDuration),
         instructions: examInstructions.trim(),
         sets,
-      });
+      }
+    };
+  };
+
+  const handleCreateExam = async () => {
+    const data = getExamPayload();
+    if (data.error) {
+      setCreateError(data.error);
+      return;
+    }
+    setCreateError("");
+    try {
+      const response = await facultyTestApi.createTest(token!, data.payload!);
       setGeneratedExamCode(response.test.roomCode);
+      alert(`Exam Created & Published successfully!\nRoom Code: ${response.test.roomCode}\nThis room will automatically close for entry in ${data.payload!.duration} minutes.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create test";
+      setCreateError(message);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    const data = getExamPayload();
+    if (data.error) {
+      setCreateError(data.error);
+      return;
+    }
+    setCreateError("");
+    try {
+      await facultyTestApi.saveDraftTest(token!, data.payload!);
+      alert("Draft saved successfully!");
+      setExamTab("manage");
+      setExamPage(1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save draft";
       setCreateError(message);
     }
   };
@@ -596,7 +710,7 @@ export default function TeacherDashboard() {
               <p className="text-base font-semibold text-slate-500 dark:text-slate-400">
                 Pending Leaves ✈️
               </p>
-              <h2 className="mt-2 text-4xl font-black text-gold-600 dark:text-blue-400">{leaves.length}</h2>
+              <h2 className="mt-2 text-4xl font-black text-gold-600 dark:text-blue-400">{myLeaves.filter(l => l.status === "Pending").length}</h2>
             </div>
 
             <div className={card}>
@@ -645,8 +759,8 @@ export default function TeacherDashboard() {
                 No tests found for this date. Try changing the date filter.
               </p>
             ) : (
-              <div className="space-y-4">
-                {attendanceTests.map((test) => (
+              <div className="max-h-[460px] overflow-y-auto pr-1 space-y-3">
+                {[...attendanceTests].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((test) => (
                   <div key={test._id} className="rounded-2xl border border-slate-200/60 bg-slate-50/50 p-4 dark:border-blue-500/10 dark:bg-blue-900/10">
                     <div className="flex items-center justify-between cursor-pointer" onClick={() => handleExpandTest(test._id)}>
                       <div>
@@ -783,48 +897,135 @@ export default function TeacherDashboard() {
       {activeTab === "leaves" && (
         <>
           <SectionHeader
-            title="Student Leave Requests"
-            description="Review pending student leave applications and take approval or rejection actions."
+            title="My Leave Application"
+            description="Apply for leave and track the approval status of your submitted leave requests."
           />
 
-          <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-accent-blue">
-              Leave Requests
-            </h2>
+          <div className="grid gap-6 lg:grid-cols-2 mt-6">
+            <div className={card}>
+              <h2 className="mb-4 text-xl font-black text-accent-blue">
+                Apply Leave
+              </h2>
 
-            {leaves.length ? (
-              leaves.map((l) => (
-                <div key={l.id} className={inner}>
-                  <p>
-                    <b>{l.studentName}</b>
-                  </p>
-                  <p>{l.fromDate} → {l.toDate}</p>
-                  <p>{l.reason}</p>
+              <form onSubmit={handleApplyFacultyLeave}>
+                <div className="mb-4">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Supporting Document (Medical Cert. etc) - Optional
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => setFacultyLeaveFile(e.target.files ? e.target.files[0] : null)}
+                    className="w-full text-slate-700 dark:text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-blue-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-500/20"
+                  />
+                </div>
 
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() => l.id && update(l.id, "Approved")}
-                      className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => l.id && update(l.id, "Rejected")}
-                      className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
-                    >
-                      Reject
-                    </button>
-                    <button className="rounded-xl bg-indigo-500/10 px-4 py-2 font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-500/20 dark:text-indigo-400">
-                      Download Outpass
-                    </button>
+                <div className="mb-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      From
+                    </label>
+                    <input
+                      type="date"
+                      value={facultyFromDate}
+                      onChange={(e) => setFacultyFromDate(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                      To
+                    </label>
+                    <input
+                      type="date"
+                      value={facultyToDate}
+                      onChange={(e) => setFacultyToDate(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                      required
+                    />
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-slate-500 dark:text-slate-400">
-                No pending leaves
-              </p>
-            )}
+
+                <div className="mb-4">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Reason for Leave
+                  </label>
+                  <textarea
+                    value={facultyLeaveReason}
+                    onChange={(e) => setFacultyLeaveReason(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                    placeholder="Please specify the reason..."
+                    required
+                  ></textarea>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingFacultyLeave}
+                  className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700 active:scale-[0.98] disabled:opacity-70"
+                >
+                  {isSubmittingFacultyLeave ? "Submitting..." : "Submit Leave Application"}
+                </button>
+              </form>
+            </div>
+
+            <div className={card}>
+              <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
+                My Leave Requests
+              </h2>
+
+              {myLeaves.length > 0 ? (
+                <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3">
+                  {[...myLeaves].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
+                    <div key={leave._id} className={inner}>
+                      <div className="flex items-center justify-between">
+                        <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-400">
+                          Updated: {new Date(leave.updatedAt || leave.createdAt || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                      <p className="whitespace-pre-wrap"><b>Reason:</b> {leave.reason}</p>
+                      
+                      {leave.fileUrl && (
+                        <div className="mt-2">
+                          <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-500 hover:underline">
+                            📄 View Attachment
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-blue-500/10">
+                        <p className="font-semibold">
+                          Status:{" "}
+                          <span
+                            className={
+                              leave.status === "Approved"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : leave.status === "Rejected"
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-amber-600 dark:text-amber-400"
+                            }
+                          >
+                            {leave.status}
+                          </span>
+                        </p>
+                        {leave.status === "Approved" && (
+                          <button className="text-sm font-bold text-blue-500 hover:text-blue-600 dark:hover:text-blue-400">
+                            Download Leavepass
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">
+                  You haven't submitted any leave requests yet.
+                </p>
+              )}
+            </div>
           </div>
         </>
       )}
@@ -833,11 +1034,35 @@ export default function TeacherDashboard() {
       {activeTab === "exams" && (
         <>
           <SectionHeader
-            title="Create Exam"
-            description="Design, customize, and publish assessments using our AI question generator."
+            title={examTab === "create" ? "Create Exam" : "Manage My Exams"}
+            description={examTab === "create" ? "Design, customize, and publish assessments using our AI question generator." : "View and manage your created exams, track statuses, and view room codes."}
           />
 
-          <div className="space-y-6">
+          <div className="mb-6 flex w-fit rounded-xl bg-slate-100 p-1.5 dark:bg-[#0F172A] shadow-inner">
+            <button
+              onClick={() => { setExamTab("create"); setExamPage(1); }}
+              className={`flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-bold transition-all ${
+                examTab === "create"
+                  ? "bg-white text-indigo-600 shadow-sm dark:bg-[#1E293B] dark:text-indigo-400"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-[#1E293B]/50"
+              }`}
+            >
+              ✨ Create New Exam
+            </button>
+            <button
+              onClick={() => { setExamTab("manage"); setExamPage(1); }}
+              className={`flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-bold transition-all ${
+                examTab === "manage"
+                  ? "bg-white text-indigo-600 shadow-sm dark:bg-[#1E293B] dark:text-indigo-400"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-[#1E293B]/50"
+              }`}
+            >
+              📚 Manage My Exams
+            </button>
+          </div>
+
+          {examTab === "create" && (
+            <div className="space-y-6">
             <aside className="h-fit rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white">
               <h2 className="mb-4 text-xl font-black text-accent-blue">Exam Setup</h2>
               <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
@@ -879,6 +1104,14 @@ export default function TeacherDashboard() {
                       <option key={sub} value={sub} />
                     ))}
                   </datalist>
+                  <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400">
+                    <svg className="mt-0.5 h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      <b>Tip:</b> Keep the subject name spelling exact and identical across same sub exams so that attendance and analytics accurately group together!
+                    </span>
+                  </p>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Total Time (minutes)</label>
@@ -1039,12 +1272,20 @@ export default function TeacherDashboard() {
                 </button>
               </div>
 
-              <button
-                onClick={handleCreateExam}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 px-6 py-3 font-bold text-white shadow-lg shadow-gold-500/25 transition"
-              >
-                Create Assessment
-              </button>
+              <div className="mt-4 flex gap-4 w-full">
+                <button
+                  onClick={handleSaveDraft}
+                  className="flex-1 items-center justify-center rounded-xl border-2 border-gold-500 hover:bg-gold-50 dark:border-gold-500/50 dark:hover:bg-gold-500/10 px-6 py-3 font-bold text-gold-600 dark:text-gold-400 transition"
+                >
+                  Save as Draft
+                </button>
+                <button
+                  onClick={handleCreateExam}
+                  className="flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 px-6 py-3 font-bold text-white shadow-lg shadow-gold-500/25 transition"
+                >
+                  Publish Assessment
+                </button>
+              </div>
               {createError && <p className="mt-2 text-sm font-semibold text-rose-500">{createError}</p>}
 
               {generatedExamCode && (
@@ -1186,6 +1427,111 @@ export default function TeacherDashboard() {
               )}
             </section>
           </div>
+          )}
+
+          {examTab === "manage" && (
+            <div>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {myExams.length > 0 ? (
+                  myExams.map((exam) => (
+                    <div key={exam._id} className={card}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate" title={exam.title}>{exam.title}</h3>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${exam.status === 'published' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                          {exam.status}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-4">{exam.subject}</p>
+                      
+                      <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300 mb-4">
+                        <div className="flex justify-between">
+                          <span className="font-semibold">Mode:</span>
+                          <span className="capitalize">{exam.mode}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-semibold">Duration:</span>
+                          <span>{exam.duration} mins</span>
+                        </div>
+                        {exam.status === "published" && (
+                          <>
+                            <div className="flex justify-between items-center mt-2 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                              <span className="font-semibold">Room Code:</span>
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono font-bold bg-white dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">{exam.roomCode}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="font-semibold text-xs">Room Access:</span>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${(!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()) ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                  {(!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()) ? 'Open' : 'Closed'}
+                                </span>
+                                <button
+                                  onClick={() => handleToggleRoomAccess(exam._id, (!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()))}
+                                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${(!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                >
+                                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${(!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()) ? 'translate-x-4.5' : 'translate-x-1'}`} />
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+                        {exam.status === "draft" && (
+                          <button
+                            onClick={() => handlePublishTest(exam._id)}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10 transition"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                            Publish
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteExam(exam._id)}
+                          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12 text-slate-500 dark:text-slate-400">
+                    <p>You haven't created any exams yet.</p>
+                  </div>
+                )}
+              </div>
+              
+              {examTotalPages > 1 && (
+                <div className="mt-8 flex justify-center gap-2">
+                  <button
+                    disabled={examPage === 1}
+                    onClick={() => setExamPage(p => Math.max(1, p - 1))}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-[#111B44] dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Previous
+                  </button>
+                  <span className="flex items-center px-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
+                    Page {examPage} of {examTotalPages}
+                  </span>
+                  <button
+                    disabled={examPage === examTotalPages}
+                    onClick={() => setExamPage(p => Math.min(examTotalPages, p + 1))}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-[#111B44] dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
@@ -1233,7 +1579,7 @@ export default function TeacherDashboard() {
                 {events.filter(e => e.type === 'notification').length === 0 ? (
                   <p className="text-slate-500">No recent notifications.</p>
                 ) : (
-                  events.filter(e => e.type === 'notification').map((evt) => (
+                  [...events].filter(e => e.type === 'notification').sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()).map((evt) => (
                     <div key={evt._id} className={inner}>
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
@@ -1268,7 +1614,7 @@ export default function TeacherDashboard() {
                 {events.filter(e => e.type === 'event' || !e.type).length === 0 ? (
                   <p className="text-slate-500">No upcoming events.</p>
                 ) : (
-                  events.filter(e => e.type === 'event' || !e.type).map((evt) => (
+                  [...events].filter(e => e.type === 'event' || !e.type).sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()).map((evt) => (
                     <div key={evt._id} className={inner}>
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>

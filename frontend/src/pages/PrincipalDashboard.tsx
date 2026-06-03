@@ -314,8 +314,8 @@ export default function PrincipalDashboard() {
             </h2>
 
             {leaveOverview.length > 0 ? (
-              <div className="space-y-4">
-                {leaveOverview.map((leave) => (
+              <div className="max-h-[480px] overflow-y-auto pr-1 space-y-4">
+                {[...leaveOverview].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
                   <div key={leave._id} className={inner}>
                     <div className="flex items-center justify-between">
                       <p><b>Name:</b> {leave.studentName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
@@ -478,7 +478,7 @@ export default function PrincipalDashboard() {
                 {events.filter(e => e.type === 'notification').length === 0 ? (
                   <p className="text-sm text-slate-500">No recent notifications.</p>
                 ) : (
-                  events.filter(e => e.type === 'notification').map((evt) => (
+                  [...events].filter(e => e.type === 'notification').sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()).map((evt) => (
                     <div key={evt._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-blue-500/5 dark:bg-blue-900/10 dark:hover:bg-blue-900/20">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>
@@ -518,7 +518,7 @@ export default function PrincipalDashboard() {
                 {events.filter(e => e.type === 'event' || !e.type).length === 0 ? (
                   <p className="text-sm text-slate-500">No upcoming events.</p>
                 ) : (
-                  events.filter(e => e.type === 'event' || !e.type).map((evt) => (
+                  [...events].filter(e => e.type === 'event' || !e.type).sort((a, b) => new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()).map((evt) => (
                     <div key={evt._id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:bg-slate-100 dark:border-blue-500/5 dark:bg-blue-900/10 dark:hover:bg-blue-900/20">
                       <div className="flex items-center justify-between">
                         <p className="font-semibold text-slate-900 dark:text-white">{evt.title}</p>

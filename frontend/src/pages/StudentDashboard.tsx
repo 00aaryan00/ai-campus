@@ -127,6 +127,7 @@ export default function StudentDashboard() {
       testId?: { title?: string; subject?: string };
     }>
   >([]);
+  const [examPage, setExamPage] = useState(1);
 
   const [mySchedule, setMySchedule] = useState<any[]>([]);
 
@@ -550,8 +551,8 @@ export default function StudentDashboard() {
               </h2>
 
               {myLeaves.length > 0 ? (
-                <div className="space-y-3">
-                  {myLeaves.map((leave) => (
+                <div className="max-h-[520px] overflow-y-auto pr-1 space-y-3">
+                  {[...myLeaves].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
                     <div key={leave._id} className={innerCardClass}>
                       <div className="flex items-center justify-between">
                         <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
@@ -643,24 +644,47 @@ export default function StudentDashboard() {
             </h2>
 
             {recentAttempts.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                {recentAttempts.slice(0, 6).map((attempt) => (
-                  <div key={attempt._id} className={innerCardClass}>
-                    <h3 className="font-black text-slate-900 dark:text-white">
-                      {attempt.testId?.title || "Exam"}
-                    </h3>
-                    <p className="text-slate-500 dark:text-slate-400">
-                      {new Date(attempt.submittedAt).toLocaleString()}
-                    </p>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Score: <b>{attempt.score}</b> / {attempt.totalMarks} | Accuracy:{" "}
-                      <b>{Math.round(attempt.accuracy)}%</b>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      Set Type: <b className="uppercase">{attempt.assignedSet || "-"}</b>
-                    </p>
+              <div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {recentAttempts.slice((examPage - 1) * 6, examPage * 6).map((attempt) => (
+                    <div key={attempt._id} className={innerCardClass}>
+                      <h3 className="font-black text-slate-900 dark:text-white">
+                        {attempt.testId?.title || "Exam"}
+                      </h3>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        {new Date(attempt.submittedAt).toLocaleString()}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                        Score: <b>{attempt.score}</b> / {attempt.totalMarks} | Accuracy:{" "}
+                        <b>{Math.round(attempt.accuracy)}%</b>
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Set Type: <b className="uppercase">{attempt.assignedSet || "-"}</b>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {recentAttempts.length > 6 && (
+                  <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-4 dark:border-blue-500/10">
+                    <button 
+                      onClick={() => setExamPage(p => Math.max(1, p - 1))}
+                      disabled={examPage === 1}
+                      className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 disabled:opacity-50 dark:bg-[#111B44] dark:text-slate-400 dark:hover:bg-blue-500/20"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Page {examPage} of {Math.ceil(recentAttempts.length / 6)}
+                    </span>
+                    <button 
+                      onClick={() => setExamPage(p => Math.min(Math.ceil(recentAttempts.length / 6), p + 1))}
+                      disabled={examPage === Math.ceil(recentAttempts.length / 6)}
+                      className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 disabled:opacity-50 dark:bg-[#111B44] dark:text-slate-400 dark:hover:bg-blue-500/20"
+                    >
+                      Next
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
             ) : (
               <p className="text-slate-500 dark:text-slate-400">

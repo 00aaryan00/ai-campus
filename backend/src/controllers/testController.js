@@ -770,12 +770,90 @@ const generateQuestionsFromAI = async (req, res, next) => {
   }
 };
 
+const getTests = async (req, res, next) => {
+  try {
+    const filter = { createdBy: req.user._id };
+    if (req.tenant) filter.institutionId = req.tenant._id;
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [tests, total] = await Promise.all([
+      Test.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Test.countDocuments(filter)
+    ]);
+
+    res.status(200).json({ 
+      success: true, 
+      tests, 
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      totalCount: total
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteTest = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const test = await Test.findOne({ _id: id, createdBy: req.user._id });
+    if (!test) {
+      return res.status(404).json({ success: false, message: "Test not found or unauthorized" });
+    }
+    
+    // Delete associated questions and attempts
+    await Question.deleteMany({ testId: id });
+    await TestAttempt.deleteMany({ testId: id });
+    await Test.deleteOne({ _id: id });
+
+    res.status(200).json({ success: true, message: "Test deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const toggleRoomAccess = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // "open" or "close"
+
+    const test = await Test.findOne({ _id: id, createdBy: req.user._id });
+    if (!test) {
+      return res.status(404).json({ success: false, message: "Test not found or unauthorized" });
+    }
+
+    if (test.status !== "published") {
+      return res.status(400).json({ success: false, message: "Only published tests can have their room access toggled" });
+    }
+
+    if (action === "open") {
+      test.roomCodeExpiresAt = null; // Stays open indefinitely
+    } else if (action === "close") {
+      test.roomCodeExpiresAt = new Date(); // Expires instantly
+    } else {
+      return res.status(400).json({ success: false, message: "action must be 'open' or 'close'" });
+    }
+
+    await test.save();
+
+    res.status(200).json({ success: true, message: `Room access is now ${action}ed`, test });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createTest,
   generateQuestionsFromAI,
+  getTests,
+  deleteTest,
   saveDraftTest,
   updateTestDraft,
   joinTestByCode,
   startTest,
   publishTest,
+  toggleRoomAccess,
 };
