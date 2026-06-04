@@ -175,6 +175,9 @@ exports.submitAttendance = async (req, res) => {
       const updatePipeline = [
         {
           $set: {
+            studentId: new mongoose.Types.ObjectId(studentId),
+            subject: test.subject,
+            institutionId: institution._id,
             totalTests: { $add: [{ $ifNull: ["$totalTests", 0] }, 1] },
             attendedTests: {
               $add: [{ $ifNull: ["$attendedTests", 0] }, isPresent ? 1 : 0],
