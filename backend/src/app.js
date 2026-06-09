@@ -25,6 +25,7 @@ const { resolveTenantFromSlug } = require("./middleware/tenantMiddleware");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
+app.set("trust proxy", 1); // Required for Render and express-rate-limit
 
 // Set security HTTP headers
 app.use(helmet({
