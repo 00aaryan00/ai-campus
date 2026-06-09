@@ -254,6 +254,15 @@ const saveDraftTest = async (req, res, next) => {
       });
     }
 
+    const facultyDepartment = normalizeDepartment(req.user.department);
+
+    if (!facultyDepartment) {
+      return res.status(400).json({
+        success: false,
+        message: "Faculty department is required to create a test draft",
+      });
+    }
+
     const normalizedMode = mode || "common";
     const normalizedSets = normalizeQuestionSets(normalizedMode, sets);
 
@@ -265,6 +274,7 @@ const saveDraftTest = async (req, res, next) => {
     }
 
     // Drafts persist the final structure without generating a room code yet.
+    // roomCode is set to undefined to prevent unique index key conflicts in MongoDB.
     const { test, groupedQuestions } = await createTestWithSets(
       {
         title,
@@ -272,10 +282,10 @@ const saveDraftTest = async (req, res, next) => {
         mode: normalizedMode,
         duration: numericDuration,
         institutionId: req.tenant._id,
+        department: facultyDepartment,
         instructions,
         createdBy: req.user._id,
         status: "draft",
-        roomCode: null,
         publishedAt: null,
         roomCodeExpiresAt: null,
       },

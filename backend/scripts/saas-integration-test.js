@@ -217,8 +217,8 @@ async function main() {
         },
       }
     );
-    // In the new backend, duplicate signup returns a generic 200 response (idempotent).
-    assertStatus(res, 200, "duplicate signup");
+    // Duplicate signup returns a 400 response because the account exists.
+    assertStatus(res, 400, "duplicate signup");
     return {};
   });
 
@@ -596,7 +596,7 @@ async function main() {
   });
 
   // --- Commented routes (product gap) ---
-  await test("Draft routes are not exposed (expected gap)", "API coverage", async () => {
+  await test("Draft routes are mounted and working", "API coverage", async () => {
     const res = await request("POST", "/api/tests/save-draft", {
       token: faculty.token,
       body: {
@@ -606,8 +606,8 @@ async function main() {
         sets: { common: [sampleQuestion("D")] },
       },
     });
-    assertStatus(res, 404, "save-draft not mounted");
-    return { note: "save-draft and update draft are implemented but commented in testRoutes.js" };
+    assertStatus(res, 201, "save-draft mounted");
+    return { note: "save-draft and update draft are successfully implemented and mounted in testRoutes.js" };
   });
 
   // Summary

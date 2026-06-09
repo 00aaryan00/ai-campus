@@ -17,6 +17,10 @@ const mysqlPool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: Number(process.env.MYSQL_POOL_SIZE || 10),
   queueLimit: 0,
+  // Add SSL for cloud DBs like Aiven, but fallback for localhost
+  ssl: process.env.MYSQL_HOST !== "127.0.0.1" && process.env.MYSQL_HOST !== "localhost" ? {
+    rejectUnauthorized: false
+  } : undefined
 });
 
 module.exports = { mysqlPool };
