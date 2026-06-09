@@ -132,10 +132,10 @@ exports.submitAttendance = async (req, res) => {
       return res.status(404).json({ success: false, message: "Institution not found." });
     }
 
-    // Get ALL students in this department
+    // Get ALL students in this department (case-insensitive)
     const allDeptStudents = await User.find({
       institutionId: institution._id,
-      department: testDepartment,
+      department: { $regex: new RegExp(`^${testDepartment}$`, "i") },
       role: "student",
     }).select("_id");
 
