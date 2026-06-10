@@ -34,6 +34,12 @@ const testSchema = new mongoose.Schema(
       default: "",
       index: true,
     },
+    semester: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

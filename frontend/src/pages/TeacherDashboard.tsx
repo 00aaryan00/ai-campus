@@ -126,6 +126,7 @@ export default function TeacherDashboard() {
   const [examTotalPages, setExamTotalPages] = useState(1);
   const [examTitle, setExamTitle] = useState("");
   const [examSubject, setExamSubject] = useState("");
+  const [examSemester, setExamSemester] = useState("");
   const [recommendedSubjects, setRecommendedSubjects] = useState([
     "Mathematics",
     "AI Basics",
@@ -507,6 +508,7 @@ export default function TeacherDashboard() {
         subject: examSubject,
         mode: isCommonMode ? "common" : "adaptive" as "common" | "adaptive",
         duration: Number(examDuration),
+        semester: examSemester,
         instructions: examInstructions.trim(),
         sets,
       }
@@ -1120,6 +1122,25 @@ export default function TeacherDashboard() {
                       <b>Tip:</b> Keep the subject name spelling exact and identical across same sub exams so that attendance and analytics accurately group together!
                     </span>
                   </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Semester</label>
+                  <select
+                    aria-label="Exam semester"
+                    value={examSemester}
+                    onChange={(e) => setExamSemester(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 font-semibold text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white"
+                  >
+                    <option value="">Select Semester (Optional)</option>
+                    <option value="1">Semester 1</option>
+                    <option value="2">Semester 2</option>
+                    <option value="3">Semester 3</option>
+                    <option value="4">Semester 4</option>
+                    <option value="5">Semester 5</option>
+                    <option value="6">Semester 6</option>
+                    <option value="7">Semester 7</option>
+                    <option value="8">Semester 8</option>
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">Total Time (minutes)</label>

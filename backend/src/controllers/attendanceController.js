@@ -132,12 +132,20 @@ exports.submitAttendance = async (req, res) => {
       return res.status(404).json({ success: false, message: "Institution not found." });
     }
 
-    // Get ALL students in this department (case-insensitive)
-    const allDeptStudents = await User.find({
+    // Build query for students in this department
+    const studentQuery = {
       institutionId: institution._id,
       department: { $regex: new RegExp(`^${testDepartment}$`, "i") },
       role: "student",
-    }).select("_id");
+    };
+
+    // If test has a semester, filter by it so we only count students in that semester
+    if (test.semester) {
+      studentQuery.semester = test.semester;
+    }
+
+    // Get ALL relevant students
+    const allDeptStudents = await User.find(studentQuery).select("_id");
 
     const allDeptStudentIds = allDeptStudents.map((u) => u._id.toString());
     const presentIdsSet = new Set(presentStudentIds);

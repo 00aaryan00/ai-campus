@@ -34,6 +34,7 @@ const processResultSubmittedJob = async (job) => {
 
   const test = await Test.findById(result.testId).lean();
   const faculty = test?.createdBy ? await User.findById(test.createdBy).select("_id name department").lean() : null;
+  const student = await User.findById(result.studentId).select("semester").lean();
   const questionIds = result.answers.map((answer) => answer.questionId).filter(Boolean);
 
   const questions = questionIds.length
@@ -47,10 +48,12 @@ const processResultSubmittedJob = async (job) => {
   // One row per submission for leaderboard/report/score trend analytics.
   await mysqlPool.execute(
     `INSERT INTO fact_student_test
-     (result_id, student_id, test_id, faculty_id, faculty_department, faculty_name_snapshot, subject, score, total_marks, accuracy, assigned_set, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     (result_id, institution_id, student_id, student_semester, test_id, faculty_id, faculty_department, faculty_name_snapshot, subject, score, total_marks, accuracy, assigned_set, submitted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
+       institution_id = VALUES(institution_id),
        student_id = VALUES(student_id),
+       student_semester = VALUES(student_semester),
        test_id = VALUES(test_id),
        faculty_id = VALUES(faculty_id),
        faculty_department = VALUES(faculty_department),
@@ -63,7 +66,9 @@ const processResultSubmittedJob = async (job) => {
        submitted_at = VALUES(submitted_at)`,
     [
       String(result._id),
+      test?.institutionId ? String(test.institutionId) : null,
       String(result.studentId),
+      student?.semester || "",
       String(result.testId),
       faculty?._id ? String(faculty._id) : null,
       faculty?.department || "",
@@ -83,10 +88,12 @@ const processResultSubmittedJob = async (job) => {
 
     await mysqlPool.execute(
       `INSERT INTO fact_student_question
-       (result_id, student_id, test_id, faculty_id, faculty_department, question_id, topic, difficulty, is_correct, selected_answer, assigned_set, submitted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (result_id, institution_id, student_id, student_semester, test_id, faculty_id, faculty_department, question_id, topic, difficulty, is_correct, selected_answer, assigned_set, submitted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
+         institution_id = VALUES(institution_id),
          student_id = VALUES(student_id),
+         student_semester = VALUES(student_semester),
          test_id = VALUES(test_id),
          faculty_id = VALUES(faculty_id),
          faculty_department = VALUES(faculty_department),
@@ -98,7 +105,9 @@ const processResultSubmittedJob = async (job) => {
          submitted_at = VALUES(submitted_at)`,
       [
         String(result._id),
+        test?.institutionId ? String(test.institutionId) : null,
         String(result.studentId),
+        student?.semester || "",
         String(result.testId),
         faculty?._id ? String(faculty._id) : null,
         faculty?.department || "",

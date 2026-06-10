@@ -131,7 +131,7 @@ const createTest = async (req, res, next) => {
       });
     }
 
-    const { title, subject, mode, duration, instructions, sets } = req.body;
+    const { title, subject, mode, duration, instructions, sets, semester } = req.body;
     const facultyDepartment = normalizeDepartment(req.user.department);
 
     if (!facultyDepartment) {
@@ -201,6 +201,7 @@ const createTest = async (req, res, next) => {
         duration: numericDuration,
         institutionId: req.tenant._id,
         department: facultyDepartment,
+        semester: semester || "",
         instructions,
         createdBy: req.user._id,
         status: "published",
@@ -230,7 +231,7 @@ const saveDraftTest = async (req, res, next) => {
       });
     }
 
-    const { title, subject, mode, duration, instructions, sets } = req.body;
+    const { title, subject, mode, duration, instructions, sets, semester } = req.body;
 
     if (!title || !subject || !duration) {
       return res.status(400).json({
@@ -283,6 +284,7 @@ const saveDraftTest = async (req, res, next) => {
         duration: numericDuration,
         institutionId: req.tenant._id,
         department: facultyDepartment,
+        semester: semester || "",
         instructions,
         createdBy: req.user._id,
         status: "draft",

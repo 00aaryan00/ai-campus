@@ -289,6 +289,7 @@ type CreateTestPayload = {
   subject: string;
   mode: "common" | "adaptive";
   duration: number;
+  semester?: string;
   instructions?: string;
   sets: {
     common?: Array<{
