@@ -171,6 +171,13 @@ export default function TeacherDashboard() {
   const [facultyLeaveFile, setFacultyLeaveFile] = useState<File | null>(null);
   const [isSubmittingFacultyLeave, setIsSubmittingFacultyLeave] = useState(false);
 
+  // Wake up AI service eagerly
+  useEffect(() => {
+    if (examTab === "create" && token && tenantSlug) {
+      facultyAiApi.pingAI(token, tenantSlug).catch(() => {});
+    }
+  }, [examTab, token, tenantSlug]);
+
   useEffect(() => {
     if (activeTab === "attendance" && tenantSlug && token) {
       const fetchTests = async () => {

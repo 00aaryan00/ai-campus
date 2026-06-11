@@ -282,6 +282,11 @@ export const facultyAiApi = {
       token,
       body: payload,
     }),
+  pingAI: (token: string, tenantSlug?: string) =>
+    request<{ success: boolean; message: string }>(tenantPath(tenantSlug || null, "/tests/ai/ping"), {
+      method: "GET",
+      token,
+    }),
 };
 
 type CreateTestPayload = {

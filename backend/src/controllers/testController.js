@@ -739,24 +739,49 @@ const generateQuestionsFromAI = async (req, res, next) => {
 
     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
     const endpoint = mode === "same" ? "/generate-same-test" : "/generate-rankwise-test";
-    const aiResponse = await fetch(`${aiServiceUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        transcript,
-        total_questions: totalQuestions,
-        total_marks: totalMarks,
-        ...(difficulty && mode === "same" ? { difficulty } : {})
-      }),
-    });
+    
+    let aiResponse;
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    if (!aiResponse.ok) {
-      const errorPayload = await aiResponse.json().catch(() => ({}));
+    while (attempts < maxAttempts) {
+      try {
+        aiResponse = await fetch(`${aiServiceUrl}${endpoint}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            transcript,
+            total_questions: totalQuestions,
+            total_marks: totalMarks,
+            ...(difficulty && mode === "same" ? { difficulty } : {})
+          }),
+        });
+
+        // If it's a success, or it's a "real" error (not 502 Bad Gateway from sleeping Render), break
+        if (aiResponse.ok || (aiResponse.status !== 502 && aiResponse.status !== 503)) {
+          break;
+        }
+      } catch (err) {
+        // Network error, probably sleeping
+      }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        // Wait 8 seconds before retrying to allow the AI service to spin up
+        await new Promise((resolve) => setTimeout(resolve, 8000));
+      }
+    }
+
+    if (!aiResponse || !aiResponse.ok) {
+      let errorPayload = {};
+      if (aiResponse) {
+        errorPayload = await aiResponse.json().catch(() => ({}));
+      }
       return res.status(502).json({
         success: false,
-        message: errorPayload?.detail || "AI service request failed",
+        message: errorPayload?.detail || "AI service request failed or timed out",
       });
     }
 
@@ -784,6 +809,17 @@ const generateQuestionsFromAI = async (req, res, next) => {
         hard: (aiPayload.hard || []).map((question) => buildNormalizedAiQuestion(question, "hard")),
       },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const pingAIService = async (req, res, next) => {
+  try {
+    const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
+    // Send a GET request to wake up the Render service (Render sometimes ignores POST requests to sleeping instances)
+    fetch(`${aiServiceUrl}/health`).catch(() => {});
+    return res.status(200).json({ success: true, message: "Ping sent to AI service" });
   } catch (error) {
     next(error);
   }
@@ -875,4 +911,5 @@ module.exports = {
   startTest,
   publishTest,
   toggleRoomAccess,
+  pingAIService,
 };
