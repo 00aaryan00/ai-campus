@@ -345,13 +345,7 @@ export default function TeacherDashboard() {
     }
   }, [activeTab, examTab, examPage, tenantSlug]);
 
-  useEffect(() => {
-    if (activeTab === "exams" && examTab === "create") {
-      // Pre-warm the AI service to prevent 502 timeouts during cold starts on Render
-      fetch(`${API_BASE_URL}/health/ai-service`, { method: "GET" })
-        .catch((err) => console.log("AI pre-warm failed:", err));
-    }
-  }, [activeTab, examTab]);
+
 
   const handleDeleteExam = async (testId: string) => {
     if (!window.confirm("Are you sure you want to delete this test? All questions and attempts will be permanently deleted!")) return;
