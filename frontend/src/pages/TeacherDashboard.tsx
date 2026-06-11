@@ -578,6 +578,9 @@ export default function TeacherDashboard() {
       : transcriptInput;
 
     try {
+      // Direct browser ping to guarantee Render wakes up, even if it drops the POST request
+      fetch("https://ai-campus-wxla.onrender.com/", { mode: "no-cors" }).catch(() => {});
+
       const response = await facultyAiApi.generateQuestions(token, {
         transcript: enrichedTranscript,
         mode: examType === "common" ? "same" : "adaptive",
