@@ -162,7 +162,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <div className="border-b border-slate-200/60 bg-white/90 px-4 py-3 dark:border-white/5 dark:bg-[#111B44]/80 lg:hidden">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <img src="/logo.jpg" alt="Logo" className="h-10 w-10 bg-white rounded-lg p-0.5 object-contain" />
+                <img src={logo} alt="Logo" className="h-10 w-10 bg-white rounded-lg p-0.5 object-contain" />
                 <div>
                   <h1 className="text-xl font-black">
                     <span className="text-gold-600 dark:text-[#6366f1]">AI</span>
@@ -172,12 +172,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </div>
               </div>
 
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-500 dark:bg-red-500/10 dark:text-red-400"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-3">
+                <ThemeToggle />
+                <button
+                  onClick={handleLogout}
+                  className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-500 dark:bg-red-500/10 dark:text-red-400"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
 
             {/* Mobile Tab Pills */}
@@ -205,7 +208,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             )}
           </div>
 
-          <div className="flex justify-end items-center gap-4 px-4 pt-4 md:px-8 md:pt-6">
+          <div className="hidden lg:flex justify-end items-center gap-4 px-4 pt-4 md:px-8 md:pt-6">
             <ThemeToggle />
             <button
               onClick={handleLogout}

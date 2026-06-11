@@ -215,12 +215,7 @@ export default function TakeTest() {
         })),
       };
 
-      console.log("SUBMIT STARTED");
-      console.log("TOKEN:", token);
-      console.log("PAYLOAD:", payload);
-
       const response = await resultApi.submitTest(token, payload);
-      console.log("SUBMIT RESPONSE:", response);
 
       // Clean up local drafts safely
       hardResetStateAfterSubmit(response.message || "Submitted.");

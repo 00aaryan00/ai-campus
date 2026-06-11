@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const Question = require("../models/Question");
 const Test = require("../models/Test");
 const TestAttempt = require("../models/TestAttempt");
+const AttendanceSession = require("../models/AttendanceSession");
+const TestAttendanceSummary = require("../models/TestAttendanceSummary");
+const { mysqlPool } = require("../config/mysql");
 const {
   buildTestLobbyPayload,
   buildStudentTestPayload,
@@ -862,7 +865,59 @@ const deleteTest = async (req, res, next) => {
     // Delete associated questions and attempts
     await Question.deleteMany({ testId: id });
     await TestAttempt.deleteMany({ testId: id });
+
+    // Reverse any attendance submitted for this test
+    const attendanceSession = await AttendanceSession.findOne({ testId: id });
+    if (attendanceSession) {
+      const { presentStudents, absentStudents, subject, institutionId } = attendanceSession;
+      
+      // Decrement totalTests & attendedTests for present students
+      if (presentStudents && presentStudents.length > 0) {
+        await TestAttendanceSummary.updateMany(
+          { studentId: { $in: presentStudents }, subject, institutionId },
+          { $inc: { totalTests: -1, attendedTests: -1 } }
+        );
+      }
+      
+      // Decrement totalTests only for absent students
+      if (absentStudents && absentStudents.length > 0) {
+        await TestAttendanceSummary.updateMany(
+          { studentId: { $in: absentStudents }, subject, institutionId },
+          { $inc: { totalTests: -1 } }
+        );
+      }
+
+      // We should really recalculate percentages, but to keep it fast, we can let the next attendance or a cron job recalculate it.
+      // Alternatively, just do a fast percentage update:
+      await TestAttendanceSummary.updateMany(
+        { studentId: { $in: [...(presentStudents || []), ...(absentStudents || [])] }, subject, institutionId, totalTests: { $gt: 0 } },
+        [
+          {
+            $set: {
+              percentage: {
+                $round: [{ $multiply: [{ $divide: ["$attendedTests", "$totalTests"] }, 100] }, 1]
+              }
+            }
+          }
+        ]
+      );
+
+      // Clean up 0 totalTest records
+      await TestAttendanceSummary.deleteMany({ totalTests: { $lte: 0 } });
+
+      await AttendanceSession.deleteOne({ _id: attendanceSession._id });
+    }
+
     await Test.deleteOne({ _id: id });
+
+    // Delete associated MySQL analytics
+    try {
+      await mysqlPool.execute("DELETE FROM fact_student_test WHERE test_id = ?", [id]);
+      await mysqlPool.execute("DELETE FROM fact_student_question WHERE test_id = ?", [id]);
+    } catch (mysqlError) {
+      console.error("Failed to delete test analytics from MySQL:", mysqlError);
+      // We don't fail the API request if MySQL analytics deletion fails, just log it.
+    }
 
     res.status(200).json({ success: true, message: "Test deleted successfully" });
   } catch (error) {
