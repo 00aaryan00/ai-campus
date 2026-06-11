@@ -410,8 +410,9 @@ const submitTest = async (req, res, next) => {
       })
       .then((job) => {
         console.log(`[analytics-queue] enqueued result-submitted jobId=${job.id}`);
-        // Ping background worker to wake it up if sleeping
-        fetch(process.env.WORKER_URL || "https://bgworkers-ai-campus.onrender.com/")
+        // Ping background worker's health endpoint to wake it up safely
+        const workerUrl = (process.env.WORKER_URL || "https://bgworkers-ai-campus.onrender.com").replace(/\/+$/, "");
+        fetch(`${workerUrl}/api/health`)
           .catch((err) => console.log("[analytics-queue] worker wake-up ping failed:", err.message));
       })
       .catch((error) => {
