@@ -174,7 +174,10 @@ export default function TeacherDashboard() {
   // Wake up AI service eagerly
   useEffect(() => {
     if (examTab === "create" && token && tenantSlug) {
+      // Ping via backend
       facultyAiApi.pingAI(token, tenantSlug).catch(() => {});
+      // Ping directly from browser (mimics manual visit to guarantee Render wakes up)
+      fetch("https://ai-campus-wxla.onrender.com/", { mode: "no-cors" }).catch(() => {});
     }
   }, [examTab, token, tenantSlug]);
 
