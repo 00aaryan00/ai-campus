@@ -462,6 +462,13 @@ const joinTestByCode = async (req, res, next) => {
       });
     }
 
+    if (test.semester && req.user.semester && test.semester !== req.user.semester) {
+      return res.status(403).json({
+        success: false,
+        message: "This test is restricted to a different semester",
+      });
+    }
+
     if (test.roomCodeExpiresAt && test.roomCodeExpiresAt <= new Date()) {
       return res.status(410).json({
         success: false,
