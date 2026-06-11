@@ -207,6 +207,9 @@ export default function TakeTest() {
     setMessage("");
 
     try {
+      // WAKE UP PING FOR BACKGROUND WORKER (guarantees Render spins it up while the backend processes the submission)
+      fetch("https://bgworkers-ai-campus.onrender.com/api/health", { mode: "no-cors" }).catch(() => {});
+
       const payload = {
         testId,
         answers: questions.map((q) => ({
