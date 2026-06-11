@@ -99,8 +99,8 @@ const updateDraftWithSets = async (test, normalizedSets, useTransaction = true) 
       normalizedSets !== undefined
         ? await replaceTestQuestions(test._id, normalizedSets, session, test.institutionId || null)
         : groupQuestionsBySet(
-            await Question.find({ testId: test._id }).sort({ createdAt: 1 }).session(session || null)
-          );
+          await Question.find({ testId: test._id }).sort({ createdAt: 1 }).session(session || null)
+        );
 
     if (session) {
       await session.commitTransaction();
@@ -178,8 +178,8 @@ const createTest = async (req, res, next) => {
       normalizedMode === "common"
         ? normalizedSets.value.common.length > 0
         : normalizedSets.value.easy.length > 0 &&
-          normalizedSets.value.medium.length > 0 &&
-          normalizedSets.value.hard.length > 0;
+        normalizedSets.value.medium.length > 0 &&
+        normalizedSets.value.hard.length > 0;
 
     if (!isPublishable) {
       return res.status(400).json({
@@ -667,8 +667,8 @@ const publishTest = async (req, res, next) => {
       test.mode === "common"
         ? (countsBySet.common || 0) > 0
         : (countsBySet.easy || 0) > 0 &&
-          (countsBySet.medium || 0) > 0 &&
-          (countsBySet.hard || 0) > 0;
+        (countsBySet.medium || 0) > 0 &&
+        (countsBySet.hard || 0) > 0;
 
     if (!isPublishable) {
       return res.status(400).json({
@@ -739,10 +739,10 @@ const generateQuestionsFromAI = async (req, res, next) => {
 
     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
     const endpoint = mode === "same" ? "/generate-same-test" : "/generate-rankwise-test";
-    
+
     let aiResponse;
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 6; // Increased to 6 to allow up to 60 seconds for Render cold starts
 
     while (attempts < maxAttempts) {
       try {
@@ -769,8 +769,8 @@ const generateQuestionsFromAI = async (req, res, next) => {
 
       attempts++;
       if (attempts < maxAttempts) {
-        // Wait 8 seconds before retrying to allow the AI service to spin up
-        await new Promise((resolve) => setTimeout(resolve, 8000));
+        // Wait 10 seconds before retrying to allow the AI service to spin up
+        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
     }
 
@@ -818,7 +818,7 @@ const pingAIService = async (req, res, next) => {
   try {
     const aiServiceUrl = process.env.AI_SERVICE_URL || "http://127.0.0.1:8001";
     // Send a GET request to wake up the Render service (Render sometimes ignores POST requests to sleeping instances)
-    fetch(`${aiServiceUrl}/health`).catch(() => {});
+    fetch(`${aiServiceUrl}/health`).catch(() => { });
     return res.status(200).json({ success: true, message: "Ping sent to AI service" });
   } catch (error) {
     next(error);
@@ -839,9 +839,9 @@ const getTests = async (req, res, next) => {
       Test.countDocuments(filter)
     ]);
 
-    res.status(200).json({ 
-      success: true, 
-      tests, 
+    res.status(200).json({
+      success: true,
+      tests,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
       totalCount: total
@@ -858,7 +858,7 @@ const deleteTest = async (req, res, next) => {
     if (!test) {
       return res.status(404).json({ success: false, message: "Test not found or unauthorized" });
     }
-    
+
     // Delete associated questions and attempts
     await Question.deleteMany({ testId: id });
     await TestAttempt.deleteMany({ testId: id });
