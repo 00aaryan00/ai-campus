@@ -463,7 +463,7 @@ export default function TakeTest() {
   // 1) ACTIVE TEST VIEW
   if (questions.length > 0 && currentQuestionData) {
     return (
-      <div className="min-h-screen w-full bg-slate-50 dark:bg-[#160028] text-slate-900 dark:text-white select-none transition-colors duration-300">
+      <div className="h-screen w-full overflow-hidden bg-slate-50 dark:bg-[#160028] text-slate-900 dark:text-white select-none transition-colors duration-300">
         
         {/* Security Violation Overlay */}
         {showViolationOverlay && (
@@ -499,7 +499,7 @@ export default function TakeTest() {
           </div>
         )}
 
-        <div className="grid grid-rows-[auto_1fr] min-h-screen">
+        <div className="grid grid-rows-[auto_1fr] h-screen">
           {/* HEADER */}
           <div className="px-6 py-4 border-b border-slate-200 dark:border-purple-700 bg-white dark:bg-[#1b0730] transition-colors duration-300">
             <div className="flex items-center justify-between gap-4">
@@ -565,10 +565,10 @@ export default function TakeTest() {
           </div>
 
           {/* MAIN CONTENT WORKSPACE */}
-          <div className="grid md:grid-cols-[1fr_minmax(300px,360px)] gap-6 h-full px-6 py-5">
+          <div className="grid md:grid-cols-[1fr_minmax(300px,360px)] gap-6 h-full px-6 py-5 overflow-hidden">
             {/* LEFT QUESTION WRAPPER */}
-            <div className="min-h-0">
-              <div className="bg-white dark:bg-[#22092f] border border-slate-200 dark:border-purple-700 rounded-2xl p-6 h-full shadow-sm transition-colors duration-300">
+            <div className="min-h-0 h-full overflow-hidden">
+              <div className="bg-white dark:bg-[#22092f] border border-slate-200 dark:border-purple-700 rounded-2xl p-6 h-full shadow-sm transition-colors duration-300 overflow-y-auto flex flex-col">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <h2 className="text-2xl md:text-3xl font-bold">
                     Question {currentQuestion + 1} of {questions.length}
@@ -583,9 +583,9 @@ export default function TakeTest() {
                 </div>
 
                 <div className="space-y-4">
-                  {currentQuestionData.options.map((option) => (
+                  {currentQuestionData.options.map((option, index) => (
                     <label
-                      key={option}
+                      key={`${currentQuestionData._id}-opt-${index}`}
                       className="flex items-center gap-4 border border-slate-200 dark:border-purple-700 p-4 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-purple-900 transition-colors duration-300"
                     >
                       <input
