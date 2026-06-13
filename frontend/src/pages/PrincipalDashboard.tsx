@@ -357,7 +357,14 @@ export default function PrincipalDashboard() {
                     {[...leaveOverview].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
                       <div key={leave._id} className={inner}>
                         <div className="flex items-center justify-between">
-                          <p><b>Name:</b> {leave.studentName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
+                          <p className="flex items-center gap-2">
+                            <b>Name:</b> {leave.studentName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span>
+                            {leave.status === "Pending" && (
+                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                New
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-400">
                             Updated: {new Date(leave.updatedAt).toLocaleString()}
                           </p>
@@ -407,7 +414,14 @@ export default function PrincipalDashboard() {
                     {[...hodLeaves].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
                       <div key={leave._id} className={inner}>
                         <div className="flex items-center justify-between">
-                          <p><b>Name:</b> {leave.facultyName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
+                          <p className="flex items-center gap-2">
+                            <b>Name:</b> {leave.facultyName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span>
+                            {leave.status === "Pending" && (
+                              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                                New
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-400">
                             Updated: {new Date(leave.updatedAt || leave.createdAt || 0).toLocaleString()}
                           </p>

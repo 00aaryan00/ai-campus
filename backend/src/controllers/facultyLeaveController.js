@@ -1,4 +1,5 @@
 const FacultyLeave = require("../models/FacultyLeave");
+const imagekit = require("../config/imagekit");
 
 const applyLeave = async (req, res) => {
   try {
@@ -15,8 +16,17 @@ const applyLeave = async (req, res) => {
 
     let fileUrl = null;
     if (req.file) {
-      // Logic for handling file upload if implemented
-      fileUrl = req.file.path;
+      try {
+        const response = await imagekit.upload({
+          file: req.file.buffer.toString("base64"),
+          fileName: req.file.originalname,
+          folder: "/ai_campus_faculty_leaves",
+        });
+        fileUrl = response.url;
+      } catch (uploadError) {
+        console.error("ImageKit upload error:", uploadError);
+        return res.status(500).json({ success: false, message: "File upload failed." });
+      }
     }
 
     const leave = new FacultyLeave({
@@ -52,12 +62,12 @@ const getMyLeaves = async (req, res) => {
 
 const getDepartmentLeaves = async (req, res) => {
   try {
-    if (req.user.role !== "hod" && req.user.role !== "principal") {
+    if (req.user.role !== "hod" && req.user.role !== "principal" && req.user.role !== "institution_admin") {
       return res.status(403).json({ success: false, message: "Only HOD or Principal can view department faculty leaves." });
     }
     
     // HOD can see their department, Principal can see all (or pass department in query)
-    const filter = { institutionId: req.user.institutionId };
+    const filter = { institutionId: req.user.institutionId, applicantRole: "faculty" };
     
     if (req.user.role === "hod") {
       filter.department = new RegExp(`^${req.user.department}$`, "i");
@@ -76,7 +86,7 @@ const updateLeaveStatus = async (req, res) => {
     const { leaveId } = req.params;
     const { status } = req.body;
 
-    if (req.user.role !== "hod" && req.user.role !== "principal") {
+    if (req.user.role !== "hod" && req.user.role !== "principal" && req.user.role !== "institution_admin") {
       return res.status(403).json({ success: false, message: "Only HOD or Principal can update faculty leave status." });
     }
 
