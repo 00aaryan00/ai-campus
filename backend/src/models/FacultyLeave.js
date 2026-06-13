@@ -10,6 +10,7 @@ const facultyLeaveSchema = new mongoose.Schema(
     fromDate: { type: Date, required: true },
     toDate: { type: Date, required: true },
     fileUrl: { type: String }, // For uploaded medical certificates etc.
+    applicantRole: { type: String, enum: ["faculty", "hod"], default: "faculty" },
     status: { 
       type: String, 
       enum: ["Pending", "Approved", "Rejected"], 

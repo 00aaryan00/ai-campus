@@ -7,7 +7,7 @@ import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
 import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
-import { leaveApi, dashboardApi, eventApi, type LeaveItem, type EventItem } from "../services/api";
+import { leaveApi, dashboardApi, eventApi, facultyLeaveApi, type LeaveItem, type EventItem, type FacultyLeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { Calendar, Trash2 } from "lucide-react";
 import TimetableUploader from "../components/TimetableUploader";
@@ -63,6 +63,8 @@ export default function PrincipalDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [data, setData] = useState<PrincipalData | null>(null);
   const [leaveOverview, setLeaveOverview] = useState<LeaveItem[]>([]);
+  const [hodLeaves, setHodLeaves] = useState<FacultyLeaveItem[]>([]);
+  const [leaveTab, setLeaveTab] = useState<"student" | "staff">("student");
 
   // Events State
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -80,15 +82,17 @@ export default function PrincipalDashboard() {
         const token = localStorage.getItem("authToken");
         if (!tenantSlug || !token) return;
 
-        const [statsRes, leavesRes, eventsRes] = await Promise.all([
+        const [statsRes, leavesRes, eventsRes, hodLeavesRes] = await Promise.all([
           dashboardApi.getPrincipalStats(token, tenantSlug),
           user?.role === "institution_admin" ? leaveApi.getAllLeaves(token, tenantSlug) : Promise.resolve({ success: false, leaves: [] }),
-          eventApi.getEvents(token, tenantSlug)
+          eventApi.getEvents(token, tenantSlug),
+          facultyLeaveApi.getHodLeaves(token, tenantSlug)
         ]);
 
         if (statsRes.success) setData(statsRes.stats);
         if (leavesRes.success) setLeaveOverview(leavesRes.leaves);
         if (eventsRes.success) setEvents(eventsRes.events);
+        if (hodLeavesRes.success) setHodLeaves(hodLeavesRes.leaves);
       } catch (err) {
         console.error("Failed to fetch dashboard data", err);
       }
@@ -158,6 +162,19 @@ export default function PrincipalDashboard() {
     } catch (err) {
       console.error(err);
       alert(`Failed to delete ${type === 'notification' ? 'notification' : 'event'}`);
+    }
+  };
+
+  const updateStaffLeave = async (id: string, status: "Approved" | "Rejected") => {
+    try {
+      const token = localStorage.getItem("authToken") || "";
+      if (tenantSlug && token) {
+        await facultyLeaveApi.updateLeaveStatus(token, tenantSlug, id, status);
+        const res = await facultyLeaveApi.getHodLeaves(token, tenantSlug);
+        if (res.success) setHodLeaves(res.leaves);
+      }
+    } catch {
+      alert("Failed to update staff leave status");
     }
   };
 
@@ -309,51 +326,144 @@ export default function PrincipalDashboard() {
           </div>
 
           <div className={card}>
-            <h2 className="mb-4 text-xl font-black text-accent-blue">
-              Institution Leave Log
-            </h2>
+            <div className="mb-6 flex gap-4 border-b border-slate-200 dark:border-slate-700 pb-2">
+              <button
+                onClick={() => setLeaveTab("student")}
+                className={`font-semibold pb-2 ${leaveTab === "student" ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+              >
+                Student Leaves
+              </button>
+              <button
+                onClick={() => setLeaveTab("staff")}
+                className={`font-semibold pb-2 flex items-center gap-2 ${leaveTab === "staff" ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+              >
+                Staff/HOD Leaves
+                {hodLeaves.filter((l) => l.status === "Pending").length > 0 && (
+                  <span className="flex items-center justify-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                    {hodLeaves.filter((l) => l.status === "Pending").length} new
+                  </span>
+                )}
+              </button>
+            </div>
 
-            {leaveOverview.length > 0 ? (
-              <div className="max-h-[480px] overflow-y-auto pr-1 space-y-4">
-                {[...leaveOverview].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
-                  <div key={leave._id} className={inner}>
-                    <div className="flex items-center justify-between">
-                      <p><b>Name:</b> {leave.studentName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
-                      <p className="text-xs text-slate-400">
-                        Updated: {new Date(leave.updatedAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
-                    <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
-                    <p><b>Reason:</b> {leave.reason}</p>
-                    
-                    {leave.fileUrl && (
-                      <p>
-                        <b>Document:</b> <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline ml-1">View Attachment</a>
-                      </p>
-                    )}
+            {leaveTab === "student" && (
+              <>
+                <h2 className="mb-4 text-xl font-black text-accent-blue">
+                  Institution Leave Log (Students)
+                </h2>
 
-                    <p className="mt-2">
-                      <b>Status:</b>{" "}
-                      <span
-                        className={
-                          leave.status === "Approved"
-                            ? "font-bold text-emerald-500"
-                            : leave.status === "Rejected"
-                            ? "font-bold text-rose-500"
-                            : "font-bold text-gold-500"
-                        }
-                      >
-                        {leave.status}
-                      </span>
-                    </p>
+                {leaveOverview.length > 0 ? (
+                  <div className="max-h-[480px] overflow-y-auto pr-1 space-y-4">
+                    {[...leaveOverview].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
+                      <div key={leave._id} className={inner}>
+                        <div className="flex items-center justify-between">
+                          <p><b>Name:</b> {leave.studentName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
+                          <p className="text-xs text-slate-400">
+                            Updated: {new Date(leave.updatedAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                        <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                        <p><b>Reason:</b> {leave.reason}</p>
+                        
+                        {leave.fileUrl && (
+                          <p>
+                            <b>Document:</b> <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline ml-1">View Attachment</a>
+                          </p>
+                        )}
+
+                        <p className="mt-2">
+                          <b>Status:</b>{" "}
+                          <span
+                            className={
+                              leave.status === "Approved"
+                                ? "font-bold text-emerald-500"
+                                : leave.status === "Rejected"
+                                ? "font-bold text-rose-500"
+                                : "font-bold text-gold-500"
+                            }
+                          >
+                            {leave.status}
+                          </span>
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center p-8 text-slate-400">
-                <p>No leave requests found.</p>
-              </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 text-slate-400">
+                    <p>No leave requests found.</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {leaveTab === "staff" && (
+              <>
+                <h2 className="mb-4 text-xl font-black text-accent-blue">
+                  HOD & Staff Leave Requests
+                </h2>
+                {hodLeaves.length > 0 ? (
+                  <div className="max-h-[480px] overflow-y-auto pr-1 space-y-4">
+                    {[...hodLeaves].sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()).map((leave) => (
+                      <div key={leave._id} className={inner}>
+                        <div className="flex items-center justify-between">
+                          <p><b>Name:</b> {leave.facultyName} <span className="text-sm text-slate-500">({leave.department?.toUpperCase()})</span></p>
+                          <p className="text-xs text-slate-400">
+                            Updated: {new Date(leave.updatedAt || leave.createdAt || 0).toLocaleString()}
+                          </p>
+                        </div>
+                        <p><b>From:</b> {new Date(leave.fromDate).toLocaleDateString()}</p>
+                        <p><b>To:</b> {new Date(leave.toDate).toLocaleDateString()}</p>
+                        <p><b>Reason:</b> {leave.reason}</p>
+                        
+                        {leave.fileUrl && (
+                          <p>
+                            <b>Document:</b> <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="text-blue-400 underline ml-1">View Attachment</a>
+                          </p>
+                        )}
+
+                        <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-blue-500/10">
+                          <p className="font-semibold">
+                            Status:{" "}
+                            <span
+                              className={
+                                leave.status === "Approved"
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : leave.status === "Rejected"
+                                  ? "text-red-600 dark:text-red-400"
+                                  : "text-amber-600 dark:text-amber-400"
+                              }
+                            >
+                              {leave.status}
+                            </span>
+                          </p>
+
+                          {leave.status === "Pending" && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => updateStaffLeave(leave._id, "Approved")}
+                                className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => updateStaffLeave(leave._id, "Rejected")}
+                                className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 text-slate-400">
+                    <p>No staff leave requests found.</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </>

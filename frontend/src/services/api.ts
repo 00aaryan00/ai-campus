@@ -732,6 +732,7 @@ export type FacultyLeaveItem = {
   facultyId: string;
   facultyName: string;
   department: string;
+  applicantRole?: string;
   reason: string;
   fromDate: string;
   toDate: string;
@@ -766,6 +767,12 @@ export const facultyLeaveApi = {
       method: "PATCH",
       token,
       body: { status },
+    }),
+
+  getHodLeaves: (token: string, tenantSlug: string) =>
+    request<{ success: boolean; leaves: FacultyLeaveItem[] }>(tenantPath(tenantSlug, `/faculty-leaves/hod-leaves`), {
+      method: "GET",
+      token,
     }),
 };
 

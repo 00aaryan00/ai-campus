@@ -65,7 +65,13 @@ export default function HODDashboard() {
   const [eventDesc, setEventDesc] = useState("");
   const [eventType, setEventType] = useState<"event" | "notification">("event");
   const [facultyLeaves, setFacultyLeaves] = useState<FacultyLeaveItem[]>([]);
-  const [leaveTab, setLeaveTab] = useState<"student" | "faculty">("student");
+  const [leaveTab, setLeaveTab] = useState<"student" | "faculty" | "my">("student");
+  const [myLeaves, setMyLeaves] = useState<FacultyLeaveItem[]>([]);
+  const [leaveReason, setLeaveReason] = useState("");
+  const [leaveFromDate, setLeaveFromDate] = useState("");
+  const [leaveToDate, setLeaveToDate] = useState("");
+  const [leaveFile, setLeaveFile] = useState<File | null>(null);
+  const [isApplyingLeave, setIsApplyingLeave] = useState(false);
   const [eventFile, setEventFile] = useState<File | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(
@@ -115,6 +121,10 @@ export default function HODDashboard() {
           const facultyRes = await facultyLeaveApi.getDepartmentLeaves(token, tenantSlug);
           if (facultyRes.success) {
             setFacultyLeaves(facultyRes.leaves);
+          }
+          const myLeavesRes = await facultyLeaveApi.getMyLeaves(token, tenantSlug);
+          if (myLeavesRes.success) {
+            setMyLeaves(myLeavesRes.leaves);
           }
         }
       } catch (err) {
@@ -212,6 +222,37 @@ export default function HODDashboard() {
       }
     } catch {
       alert("Failed to update leave status");
+    }
+  };
+
+  const handleApplyLeave = async () => {
+    if (!leaveReason || !leaveFromDate || !leaveToDate) return alert("Please fill in all required leave fields.");
+    try {
+      setIsApplyingLeave(true);
+      const token = localStorage.getItem("authToken") || "";
+      if (!token || !tenantSlug) return;
+
+      const formData = new FormData();
+      formData.append("reason", leaveReason);
+      formData.append("fromDate", leaveFromDate);
+      formData.append("toDate", leaveToDate);
+      if (leaveFile) formData.append("file", leaveFile);
+
+      const res = await facultyLeaveApi.applyLeave(token, tenantSlug, formData);
+      if (res.success) {
+        setMyLeaves((prev) => [res.leave, ...prev]);
+        setLeaveReason("");
+        setLeaveFromDate("");
+        setLeaveToDate("");
+        setLeaveFile(null);
+        alert("Leave applied successfully.");
+      } else {
+        alert(res.message || "Failed to apply leave.");
+      }
+    } catch {
+      alert("Error applying leave.");
+    } finally {
+      setIsApplyingLeave(false);
     }
   };
 
@@ -339,6 +380,12 @@ export default function HODDashboard() {
                       {facultyLeaves.filter((l) => l.status === "Pending").length} new
                     </span>
                   )}
+                </button>
+                <button
+                  onClick={() => setLeaveTab("my")}
+                  className={`font-semibold pb-2 flex items-center gap-2 ${leaveTab === "my" ? "text-blue-600 border-b-2 border-blue-600 dark:text-blue-400 dark:border-blue-400" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+                >
+                  My Leaves
                 </button>
               </div>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:text-blue-600 transition-colors">
@@ -502,6 +549,103 @@ export default function HODDashboard() {
                 </p>
               )}
             </>
+          )}
+
+          {leaveTab === "my" && (
+            <div className="grid gap-6 md:grid-cols-[1fr_2fr]">
+              <div className={inner}>
+                <h3 className="mb-4 text-lg font-bold text-slate-800 dark:text-white">Apply for Leave</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">Reason</label>
+                    <textarea
+                      value={leaveReason}
+                      onChange={(e) => setLeaveReason(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                      rows={3}
+                      placeholder="Enter reason for leave..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">From Date</label>
+                      <input
+                        type="date"
+                        value={leaveFromDate}
+                        onChange={(e) => setLeaveFromDate(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">To Date</label>
+                      <input
+                        type="date"
+                        value={leaveToDate}
+                        onChange={(e) => setLeaveToDate(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">Attachment (Optional)</label>
+                    <input
+                      type="file"
+                      onChange={(e) => setLeaveFile(e.target.files?.[0] || null)}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 focus:border-blue-500 focus:outline-none dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
+                    />
+                  </div>
+                  <button
+                    onClick={handleApplyLeave}
+                    disabled={isApplyingLeave}
+                    className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isApplyingLeave ? "Submitting..." : "Submit Leave Request"}
+                  </button>
+                </div>
+              </div>
+
+              <div className={inner}>
+                <h3 className="mb-4 text-lg font-bold text-slate-800 dark:text-white">My Leave History</h3>
+                {myLeaves.length > 0 ? (
+                  <div className="max-h-[480px] space-y-4 overflow-y-auto pr-1">
+                    {[...myLeaves].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).map((leave) => (
+                      <div key={leave._id} className="rounded-xl border border-slate-200/50 bg-white p-4 shadow-sm dark:border-blue-500/10 dark:bg-[#0C1330]">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-bold ${
+                              leave.status === "Approved"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                : leave.status === "Rejected"
+                                ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                            }`}
+                          >
+                            {leave.status}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {new Date(leave.createdAt || "").toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="mb-1 text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-semibold">Duration:</span>{" "}
+                          {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300">
+                          <span className="font-semibold">Reason:</span> {leave.reason}
+                        </p>
+                        {leave.fileUrl && (
+                          <a href={leave.fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-bold text-blue-500 hover:underline">
+                            View Attachment
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 dark:text-slate-400">No leaves applied yet.</p>
+                )}
+              </div>
+            </div>
           )}
           </div>
         </>

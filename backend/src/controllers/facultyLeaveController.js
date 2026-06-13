@@ -28,6 +28,7 @@ const applyLeave = async (req, res) => {
       fromDate,
       toDate,
       fileUrl,
+      applicantRole: role,
     });
 
     await leave.save();
@@ -101,9 +102,25 @@ const updateLeaveStatus = async (req, res) => {
   }
 };
 
+const getInstitutionHodLeaves = async (req, res) => {
+  try {
+    if (req.user.role !== "principal" && req.user.role !== "institution_admin") {
+      return res.status(403).json({ success: false, message: "Only Principal can view all HOD leaves." });
+    }
+    
+    const filter = { institutionId: req.user.institutionId, applicantRole: "hod" };
+    const leaves = await FacultyLeave.find(filter).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, leaves });
+  } catch (error) {
+    console.error("Error fetching HOD leaves:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
 module.exports = {
   applyLeave,
   getMyLeaves,
   getDepartmentLeaves,
   updateLeaveStatus,
+  getInstitutionHodLeaves,
 };

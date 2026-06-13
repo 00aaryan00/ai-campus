@@ -5,6 +5,7 @@ const {
   getMyLeaves,
   getDepartmentLeaves,
   updateLeaveStatus,
+  getInstitutionHodLeaves,
 } = require("../controllers/facultyLeaveController");
 const { protect } = require("../middleware/authMiddleware");
 const tenantMiddleware = require("../middleware/tenantMiddleware");
@@ -15,16 +16,19 @@ const upload = multer({ storage });
 
 router.use(tenantMiddleware.resolveTenantFromSlug);
 
-// Apply for a leave (Faculty)
+// Apply for a leave (Faculty/HOD)
 router.post("/apply", protect, upload.single("file"), applyLeave);
 
-// Get logged-in faculty's leaves
+// Get logged-in faculty/HOD's leaves
 router.get("/my-leaves", protect, getMyLeaves);
 
 // Get all faculty leaves for the department (HOD / Principal)
 router.get("/department-leaves", protect, getDepartmentLeaves);
 
-// Approve/Reject faculty leave
+// Get all HOD leaves (Principal)
+router.get("/hod-leaves", protect, getInstitutionHodLeaves);
+
+// Approve/Reject faculty/HOD leave
 router.patch("/:leaveId/status", protect, updateLeaveStatus);
 
 module.exports = router;
