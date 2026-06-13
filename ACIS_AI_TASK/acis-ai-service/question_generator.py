@@ -12,6 +12,7 @@ SYSTEM_PROMPT_BASE = (
     "You are an exam question generator. Your job is to return a JSON object of MCQ questions based on the provided transcript. "
     "Each question must have: 'question' (string), 'options' (object with keys A, B, C, D), "
     "'correct_answer' (one of A, B, C, D), 'difficulty' (string), and 'marks' (integer). "
+    "CRITICAL RULE: The 4 options (A, B, C, D) MUST be completely unique and distinct from each other. Do NOT generate duplicate options in the same question. "
     "Do NOT include any explanation, markdown, or text outside the JSON object."
 )
 
