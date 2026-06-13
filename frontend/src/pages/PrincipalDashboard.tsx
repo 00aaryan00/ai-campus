@@ -65,6 +65,7 @@ export default function PrincipalDashboard() {
   const [leaveOverview, setLeaveOverview] = useState<LeaveItem[]>([]);
   const [hodLeaves, setHodLeaves] = useState<FacultyLeaveItem[]>([]);
   const [leaveTab, setLeaveTab] = useState<"student" | "staff">("student");
+  const [processingLeave, setProcessingLeave] = useState<{ id: string, action: "Approved" | "Rejected" } | null>(null);
 
   // Events State
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -167,6 +168,7 @@ export default function PrincipalDashboard() {
 
   const updateStaffLeave = async (id: string, status: "Approved" | "Rejected") => {
     try {
+      setProcessingLeave({ id, action: status });
       const token = localStorage.getItem("authToken") || "";
       if (tenantSlug && token) {
         await facultyLeaveApi.updateLeaveStatus(token, tenantSlug, id, status);
@@ -175,6 +177,8 @@ export default function PrincipalDashboard() {
       }
     } catch {
       alert("Failed to update staff leave status");
+    } finally {
+      setProcessingLeave(null);
     }
   };
 
@@ -456,15 +460,17 @@ export default function PrincipalDashboard() {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => updateStaffLeave(leave._id, "Approved")}
-                                className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                                disabled={!!processingLeave}
+                                className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110 disabled:opacity-50"
                               >
-                                Approve
+                                {processingLeave?.id === leave._id && processingLeave.action === "Approved" ? "Processing..." : "Approve"}
                               </button>
                               <button
                                 onClick={() => updateStaffLeave(leave._id, "Rejected")}
-                                className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                                disabled={!!processingLeave}
+                                className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110 disabled:opacity-50"
                               >
-                                Reject
+                                {processingLeave?.id === leave._id && processingLeave.action === "Rejected" ? "Processing..." : "Reject"}
                               </button>
                             </div>
                           )}

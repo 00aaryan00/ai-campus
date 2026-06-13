@@ -72,6 +72,7 @@ export default function HODDashboard() {
   const [leaveToDate, setLeaveToDate] = useState("");
   const [leaveFile, setLeaveFile] = useState<File | null>(null);
   const [isApplyingLeave, setIsApplyingLeave] = useState(false);
+  const [processingLeave, setProcessingLeave] = useState<{ id: string, action: "Approved" | "Rejected" } | null>(null);
   const [eventFile, setEventFile] = useState<File | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(
@@ -214,6 +215,7 @@ export default function HODDashboard() {
 
   const update = async (id: string, status: "Approved" | "Rejected") => {
     try {
+      setProcessingLeave({ id, action: status });
       const token = localStorage.getItem("authToken") || "";
       if (tenantSlug && token) {
         await leaveApi.updateLeaveStatus(token, tenantSlug, id, status);
@@ -222,6 +224,8 @@ export default function HODDashboard() {
       }
     } catch {
       alert("Failed to update leave status");
+    } finally {
+      setProcessingLeave(null);
     }
   };
 
@@ -258,6 +262,7 @@ export default function HODDashboard() {
 
   const updateFacultyLeave = async (id: string, status: "Approved" | "Rejected") => {
     try {
+      setProcessingLeave({ id, action: status });
       const token = localStorage.getItem("authToken") || "";
       if (tenantSlug && token) {
         await facultyLeaveApi.updateLeaveStatus(token, tenantSlug, id, status);
@@ -266,6 +271,8 @@ export default function HODDashboard() {
       }
     } catch {
       alert("Failed to update faculty leave status");
+    } finally {
+      setProcessingLeave(null);
     }
   };
 
@@ -450,15 +457,17 @@ export default function HODDashboard() {
                       <div className="mt-4 flex gap-3">
                         <button
                           onClick={() => update(leave._id, "Approved")}
-                          className="rounded-xl bg-emerald-500/10 px-4 py-2 font-bold text-emerald-600 transition hover:bg-emerald-500/20"
+                          disabled={!!processingLeave}
+                          className="rounded-xl bg-emerald-500/10 px-4 py-2 font-bold text-emerald-600 transition hover:bg-emerald-500/20 disabled:opacity-50"
                         >
-                          Approve
+                          {processingLeave?.id === leave._id && processingLeave.action === "Approved" ? "Processing..." : "Approve"}
                         </button>
                         <button
                           onClick={() => update(leave._id, "Rejected")}
-                          className="rounded-xl bg-rose-500/10 px-4 py-2 font-bold text-rose-600 transition hover:bg-rose-500/20"
+                          disabled={!!processingLeave}
+                          className="rounded-xl bg-red-500/10 px-4 py-2 font-bold text-red-600 transition hover:bg-red-500/20 disabled:opacity-50"
                         >
-                          Decline
+                          {processingLeave?.id === leave._id && processingLeave.action === "Rejected" ? "Processing..." : "Reject"}
                         </button>
                       </div>
                     )}
@@ -527,15 +536,17 @@ export default function HODDashboard() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => updateFacultyLeave(leave._id, "Approved")}
-                              className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                              disabled={!!processingLeave}
+                              className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110 disabled:opacity-50"
                             >
-                              Approve
+                              {processingLeave?.id === leave._id && processingLeave.action === "Approved" ? "Processing..." : "Approve"}
                             </button>
                             <button
                               onClick={() => updateFacultyLeave(leave._id, "Rejected")}
-                              className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110"
+                              disabled={!!processingLeave}
+                              className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110 disabled:opacity-50"
                             >
-                              Reject
+                              {processingLeave?.id === leave._id && processingLeave.action === "Rejected" ? "Processing..." : "Reject"}
                             </button>
                           </div>
                         )}
