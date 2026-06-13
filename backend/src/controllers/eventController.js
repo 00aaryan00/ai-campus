@@ -68,7 +68,10 @@ const getEvents = async (req, res) => {
     let query = { tenantSlug };
 
     // Filter by role/department
-    if (role !== "institution_admin") {
+    if (role === "institution_admin" || role === "principal") {
+      // Principal should not see department-specific events created by HODs
+      query.targetAudience = /^all$/i;
+    } else {
       const userDept = req.user.department;
       if (userDept) {
         query.targetAudience = { 
