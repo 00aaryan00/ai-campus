@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
-import Charts from "../components/Charts";
 import DayStatusCard, {
   getCurrentDayStatus,
 } from "../components/DayStatusCard";
@@ -11,21 +10,9 @@ import { API_BASE_URL } from "../services/api";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
 import { facultyAiApi, facultyTestApi, eventApi, attendanceApi, dashboardApi, facultyLeaveApi, type EventItem, type FacultyLeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import type { AttendanceTest, AttendanceStudent } from "../services/api";
-
-type LeaveRequest = {
-  id?: string;
-  studentName: string;
-  role: "Student" | "Teacher" | "Staff";
-  department?: string;
-  reason: string;
-  fromDate: string;
-  toDate: string;
-  status: "Pending" | "Approved" | "Rejected";
-};
 
 type QuestionPayload = {
   questionText: string;
@@ -38,6 +25,7 @@ type QuestionPayload = {
 };
 
 type TeacherData = {
+  name?: string;
   classes: number;
   students: number;
   assignmentsGiven: number;
@@ -763,6 +751,8 @@ export default function TeacherDashboard() {
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold text-slate-500">Date Filter:</span>
                 <input
+                  title="Attendance Date Filter"
+                  aria-label="Attendance Date Filter"
                   type="date"
                   value={attendanceDate}
                   onChange={(e) => setAttendanceDate(e.target.value)}
@@ -930,6 +920,8 @@ export default function TeacherDashboard() {
                     Supporting Document (Medical Cert. etc) - Optional
                   </label>
                   <input
+                    title="Upload Faculty Leave Document"
+                    aria-label="Upload Faculty Leave Document"
                     type="file"
                     onChange={(e) => setFacultyLeaveFile(e.target.files ? e.target.files[0] : null)}
                     className="w-full text-slate-700 dark:text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-blue-500/10 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-600 hover:file:bg-blue-500/20"
@@ -942,6 +934,8 @@ export default function TeacherDashboard() {
                       From
                     </label>
                     <input
+                      title="Faculty Leave From Date"
+                      aria-label="Faculty Leave From Date"
                       type="date"
                       value={facultyFromDate}
                       onChange={(e) => setFacultyFromDate(e.target.value)}
@@ -954,6 +948,8 @@ export default function TeacherDashboard() {
                       To
                     </label>
                     <input
+                      title="Faculty Leave To Date"
+                      aria-label="Faculty Leave To Date"
                       type="date"
                       value={facultyToDate}
                       onChange={(e) => setFacultyToDate(e.target.value)}
@@ -968,6 +964,8 @@ export default function TeacherDashboard() {
                     Reason for Leave
                   </label>
                   <textarea
+                    title="Faculty Leave Reason"
+                    aria-label="Faculty Leave Reason"
                     value={facultyLeaveReason}
                     onChange={(e) => setFacultyLeaveReason(e.target.value)}
                     rows={3}
@@ -1369,12 +1367,12 @@ export default function TeacherDashboard() {
                               </div>
                               {isEditing ? (
                                 <div className="space-y-2">
-                                  <input value={q.questionText} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, questionText: e.target.value, source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
-                                  <input value={q.options.join(" | ")} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, options: e.target.value.split("|").map((item) => item.trim()).filter(Boolean), source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                  <input title="Question Text" aria-label="Question Text" value={q.questionText} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, questionText: e.target.value, source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                  <input title="Question Options" aria-label="Question Options" value={q.options.join(" | ")} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, options: e.target.value.split("|").map((item) => item.trim()).filter(Boolean), source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
                                   <div className="grid gap-2 md:grid-cols-3">
-                                    <input value={q.correctAnswer} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, correctAnswer: e.target.value, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
-                                    <input type="number" min={1} value={q.marks} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, marks: Number(e.target.value) || 1, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
-                                    <select value={q.difficultyLevel} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, difficultyLevel: e.target.value as "easy" | "medium" | "hard", source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
+                                    <input title="Correct Answer" aria-label="Correct Answer" value={q.correctAnswer} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, correctAnswer: e.target.value, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <input title="Marks" aria-label="Marks" type="number" min={1} value={q.marks} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, marks: Number(e.target.value) || 1, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <select title="Difficulty Level" aria-label="Difficulty Level" value={q.difficultyLevel} onChange={(e) => updateQuestion("common", i, (prev) => ({ ...prev, difficultyLevel: e.target.value as "easy" | "medium" | "hard", source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
                                   </div>
                                 </div>
                               ) : (
@@ -1426,12 +1424,12 @@ export default function TeacherDashboard() {
                                 </div>
                                 {isEditing ? (
                                   <div className="space-y-2">
-                                    <input value={q.questionText} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, questionText: e.target.value, source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
-                                    <input value={q.options.join(" | ")} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, options: e.target.value.split("|").map((item) => item.trim()).filter(Boolean), source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <input title="Question Text" aria-label="Question Text" value={q.questionText} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, questionText: e.target.value, source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                    <input title="Question Options" aria-label="Question Options" value={q.options.join(" | ")} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, options: e.target.value.split("|").map((item) => item.trim()).filter(Boolean), source: "manual" }))} className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
                                     <div className="grid gap-2 md:grid-cols-3">
-                                      <input value={q.correctAnswer} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, correctAnswer: e.target.value, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
-                                      <input type="number" min={1} value={q.marks} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, marks: Number(e.target.value) || 1, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
-                                      <select value={q.difficultyLevel} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, difficultyLevel: e.target.value as "easy" | "medium" | "hard", source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
+                                      <input title="Correct Answer" aria-label="Correct Answer" value={q.correctAnswer} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, correctAnswer: e.target.value, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                      <input title="Marks" aria-label="Marks" type="number" min={1} value={q.marks} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, marks: Number(e.target.value) || 1, source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white" />
+                                      <select title="Difficulty Level" aria-label="Difficulty Level" value={q.difficultyLevel} onChange={(e) => updateQuestion(setName, i, (prev) => ({ ...prev, difficultyLevel: e.target.value as "easy" | "medium" | "hard", source: "manual" }))} className="rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
                                     </div>
                                   </div>
                                 ) : (
@@ -1503,6 +1501,8 @@ export default function TeacherDashboard() {
                                   {(!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()) ? 'Open' : 'Closed'}
                                 </span>
                                 <button
+                                  title="Toggle Room Access"
+                                  aria-label="Toggle Room Access"
                                   onClick={() => handleToggleRoomAccess(exam._id, (!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()))}
                                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${(!exam.roomCodeExpiresAt || new Date(exam.roomCodeExpiresAt) > new Date()) ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
                                 >

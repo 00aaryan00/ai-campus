@@ -746,8 +746,7 @@ export default function TakeTest() {
 
                   <div className="flex items-center gap-4">
                     <div
-                      className="w-12 h-12 rounded-full text-white flex items-center justify-center font-bold text-xl border-2 border-cyan-300"
-                      style={{ background: "linear-gradient(135deg,#22c55e 0%,#8b5cf6 100%)" }}
+                      className="w-12 h-12 rounded-full text-white flex items-center justify-center font-bold text-xl border-2 border-cyan-300 bg-gradient-to-br from-green-500 to-purple-500"
                     >
                       {answeredAndReviewedCount}
                     </div>
@@ -769,13 +768,9 @@ export default function TakeTest() {
                         "h-12 rounded-xl text-lg font-bold transition-all flex items-center justify-center";
 
                       let classes = "bg-slate-100 text-slate-700 dark:bg-gray-200 dark:text-black";
-                      let style: React.CSSProperties = {};
 
                       if (isReviewed && isAnswered) {
-                        classes = "text-white border-2 border-cyan-300";
-                        style = {
-                          background: "linear-gradient(135deg,#22c55e 0%,#8b5cf6 100%)",
-                        };
+                        classes = "text-white border-2 border-cyan-300 bg-gradient-to-br from-green-500 to-purple-500";
                       } else if (isReviewed) {
                         classes = "bg-purple-600 text-white";
                       } else if (isAnswered) {
@@ -794,7 +789,6 @@ export default function TakeTest() {
                           key={question._id}
                           onClick={() => goToIndex(index)}
                           className={`${base} ${classes}`}
-                          style={style}
                           title={`Question ${index + 1}`}
                           aria-current={isActive ? "true" : "false"}
                         >

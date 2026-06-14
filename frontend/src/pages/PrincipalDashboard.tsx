@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
-import Charts from "../components/Charts";
 import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
@@ -574,16 +573,16 @@ export default function PrincipalDashboard() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input type="text" placeholder={eventType === 'event' ? "Event Title" : "Notification Title"} value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                <input title="Event Title" aria-label="Event Title" type="text" placeholder={eventType === 'event' ? "Event Title" : "Notification Title"} value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
                 
                 {eventType === 'event' && (
                   <>
-                    <input type="text" placeholder="Venue" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-                    <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                    <input title="Venue" aria-label="Venue" type="text" placeholder="Venue" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                    <input title="Event Date" aria-label="Event Date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
                   </>
                 )}
               </div>
-            <textarea value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+            <textarea title="Event Description" aria-label="Event Description" value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             <div className="mt-4">
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-gold-500 dark:border-blue-500/20 dark:bg-[#111B44] dark:hover:border-blue-400">
                 <span className="text-2xl">📎</span>
@@ -591,7 +590,7 @@ export default function PrincipalDashboard() {
                   <p className="font-semibold text-slate-700 dark:text-white">Upload Document (Optional)</p>
                   <p className="text-sm text-slate-400">{eventFile ? eventFile.name : "PDF, DOCX, JPG, PNG (Max 10MB)"}</p>
                 </div>
-                <input type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
+                <input title="Upload Document" aria-label="Upload Document" type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
               </label>
             </div>
             <button onClick={handlePublishEvent} disabled={isPublishing} className="mt-5 rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">

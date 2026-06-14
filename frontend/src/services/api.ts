@@ -336,19 +336,6 @@ type CreateTestPayload = {
   };
 };
 
-type CreateTestResponse = {
-  success: boolean;
-  message: string;
-  test: {
-    _id: string;
-    title: string;
-    roomCode: string;
-    subject: string;
-    mode: "common" | "adaptive";
-    duration: number;
-    status: "published" | "draft" | "closed";
-  };
-};
 
 export const facultyTestApi = {
   getTests: (token: string, tenantSlug?: string, page = 1, limit = 10) =>
@@ -655,6 +642,7 @@ export type EventItem = {
   tenantSlug: string;
   createdBy: string;
   createdAt: string;
+  type?: "event" | "notification";
 };
 
 export const eventApi = {
@@ -783,6 +771,7 @@ export type AttendanceTest = {
   department: string;
   roomCode: string;
   createdAt: string;
+  updatedAt?: string;
   attendanceSubmitted: boolean;
 };
 

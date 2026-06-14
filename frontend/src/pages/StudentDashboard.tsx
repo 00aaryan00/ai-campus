@@ -491,6 +491,8 @@ export default function StudentDashboard() {
                     Supporting Document (Medical Cert. etc) - Optional
                   </label>
                   <input
+                    title="Upload Supporting Document"
+                    aria-label="Upload Supporting Document"
                     type="file"
                     onChange={(e) => setLeaveFile(e.target.files ? e.target.files[0] : null)}
                     className="w-full text-slate-700 dark:text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-gold-500/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-gold-600 dark:file:text-gold-500 hover:file:bg-gold-500/30"
@@ -504,6 +506,8 @@ export default function StudentDashboard() {
                     </label>
 
                     <input
+                      title="Leave From Date"
+                      aria-label="Leave From Date"
                       type="date"
                       value={fromDate}
                       onChange={(e) => setFromDate(e.target.value)}
@@ -518,6 +522,8 @@ export default function StudentDashboard() {
                     </label>
 
                     <input
+                      title="Leave To Date"
+                      aria-label="Leave To Date"
                       type="date"
                       value={toDate}
                       onChange={(e) => setToDate(e.target.value)}
@@ -528,6 +534,8 @@ export default function StudentDashboard() {
                 </div>
 
                 <textarea
+                  title="Leave Reason"
+                  aria-label="Leave Reason"
                   value={leaveReason}
                   onChange={(e) => setLeaveReason(e.target.value)}
                   placeholder="Enter your leave reason..."

@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import MainLayout from "../layout/MainLayout";
-import Charts from "../components/Charts";
 import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
 import { leaveApi, facultyLeaveApi, type LeaveItem, type FacultyLeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { BarChart3, TrendingUp, MailX, Users, Building } from "lucide-react";
+import { BarChart3, TrendingUp, MailX, Users } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { eventApi, API_BASE_URL, dashboardApi } from "../services/api";
 import type { EventItem } from "../services/api";
@@ -19,22 +18,18 @@ type HODData = {
   healthIndex: number;
   criticalAlerts: number;
   topDepartment: string;
+  reports: number;
 };
 
 type TabType = "dashboard" | "leaves" | "timetable" | "performance" | "events" | "notifications";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-
-
 const card =
   "card-hover rounded-3xl border border-slate-200/60 bg-white/90 p-6 text-slate-900 shadow-card backdrop-blur-xl transition dark:border-blue-500/10 dark:bg-[#0C1330] dark:text-white";
 
 const inner =
   "card-hover rounded-2xl border border-slate-200/40 bg-slate-50 p-4 text-slate-700 dark:border-blue-500/10 dark:bg-[#111B44] dark:text-white";
-
-const btn =
-  "rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md shadow-gold-600/15 dark:shadow-blue-600/15 transition hover:scale-105 hover:shadow-gold-600/25 dark:hover:shadow-blue-600/25";
 
 const SectionHeader = ({
   title,
@@ -90,13 +85,11 @@ export default function HODDashboard() {
         const token = localStorage.getItem("authToken");
         if (!tenantSlug || !token) return;
 
-        // Fetch Dashboard Stats
         const statsRes = await dashboardApi.getPrincipalStats(token, tenantSlug);
         if (statsRes.success) {
           setData(statsRes.stats);
         }
 
-        // Fetch Schedule
         const scheduleRes = await fetch(`${API_BASE_URL}/t/${tenantSlug}/timetable/my-schedule`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -537,14 +530,14 @@ export default function HODDashboard() {
                             <button
                               onClick={() => updateFacultyLeave(leave._id, "Approved")}
                               disabled={!!processingLeave}
-                              className="rounded-xl bg-accent-emerald px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                              className="rounded-xl bg-emerald-500/10 px-4 py-2 font-semibold text-emerald-600 shadow-sm transition hover:brightness-110 disabled:opacity-50"
                             >
                               {processingLeave?.id === leave._id && processingLeave.action === "Approved" ? "Processing..." : "Approve"}
                             </button>
                             <button
                               onClick={() => updateFacultyLeave(leave._id, "Rejected")}
                               disabled={!!processingLeave}
-                              className="rounded-xl bg-accent-rose px-4 py-2 font-semibold text-navy-900 shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                              className="rounded-xl bg-red-500/10 px-4 py-2 font-semibold text-red-600 shadow-sm transition hover:brightness-110 disabled:opacity-50"
                             >
                               {processingLeave?.id === leave._id && processingLeave.action === "Rejected" ? "Processing..." : "Reject"}
                             </button>
@@ -582,6 +575,8 @@ export default function HODDashboard() {
                       <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">From Date</label>
                       <input
                         type="date"
+                        title="Leave From Date"
+                        aria-label="Leave From Date"
                         value={leaveFromDate}
                         onChange={(e) => setLeaveFromDate(e.target.value)}
                         className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
@@ -591,6 +586,8 @@ export default function HODDashboard() {
                       <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">To Date</label>
                       <input
                         type="date"
+                        title="Leave To Date"
+                        aria-label="Leave To Date"
                         value={leaveToDate}
                         onChange={(e) => setLeaveToDate(e.target.value)}
                         className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
@@ -600,6 +597,8 @@ export default function HODDashboard() {
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-slate-600 dark:text-slate-400">Attachment (Optional)</label>
                     <input
+                      title="Upload Document"
+                      aria-label="Upload Document"
                       type="file"
                       onChange={(e) => setLeaveFile(e.target.files?.[0] || null)}
                       className="w-full rounded-xl border border-slate-300 bg-white p-2 text-slate-900 focus:border-blue-500 focus:outline-none dark:border-blue-500/20 dark:bg-[#0C1330] dark:text-white"
@@ -669,7 +668,6 @@ export default function HODDashboard() {
             description="View department schedules, labs, sessions and planned academic activities."
           />
 
-          {/* Day Selector */}
           <div className="mb-6 flex gap-3 overflow-x-auto pb-2">
             {days.map((day) => (
               <button
@@ -771,7 +769,6 @@ export default function HODDashboard() {
             <h2 className="mb-4 text-xl font-black text-gold-600 dark:text-blue-400">
               Publish Update
             </h2>
-            {/* Event Type Selection */}
               <div className="flex gap-4 mb-4">
                 <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                   <input type="radio" name="eventType" value="event" checked={eventType === 'event'} onChange={() => setEventType('event')} />
@@ -784,16 +781,16 @@ export default function HODDashboard() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <input type="text" placeholder={eventType === 'event' ? "Event Title" : "Notification Title"} value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                <input title="Event Title" aria-label="Event Title" type="text" placeholder={eventType === 'event' ? "Event Title" : "Notification Title"} value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
                 
                 {eventType === 'event' && (
                   <>
-                    <input type="text" placeholder="Venue" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
-                    <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                    <input title="Venue" aria-label="Venue" type="text" placeholder="Venue" value={eventVenue} onChange={(e) => setEventVenue(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+                    <input title="Event Date" aria-label="Event Date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
                   </>
                 )}
               </div>
-            <textarea value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
+            <textarea title="Event Description" aria-label="Event Description" value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} placeholder="Event description..." rows={3} className="mt-4 w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-gold-500 focus:ring-2 focus:ring-gold-500/30 dark:border-blue-500/15 dark:bg-[#111B44] dark:text-white" />
             <div className="mt-4">
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-gold-500 dark:border-blue-500/20 dark:bg-[#111B44] dark:hover:border-blue-400">
                 <span className="text-2xl">📎</span>
@@ -801,7 +798,7 @@ export default function HODDashboard() {
                   <p className="font-semibold text-slate-700 dark:text-white">Upload Document (Optional)</p>
                   <p className="text-sm text-slate-400">{eventFile ? eventFile.name : "PDF, DOCX, JPG, PNG (Max 10MB)"}</p>
                 </div>
-                <input type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
+                <input title="Upload Document" aria-label="Upload Document" type="file" onChange={(e) => setEventFile(e.target.files?.[0] || null)} className="hidden" accept=".pdf,.docx,.jpg,.jpeg,.png" />
               </label>
             </div>
             <button onClick={handlePublishEvent} disabled={isPublishing} className="mt-5 rounded-xl bg-gradient-to-r from-gold-600 to-gold-400 dark:from-blue-600 dark:to-blue-400 px-5 py-2 font-semibold text-slate-900 shadow-md transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
