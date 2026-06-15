@@ -6,16 +6,23 @@ type Theme = "dark" | "light";
 const ThemeContext = createContext<any>(null);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(() => {
+    const storedTheme = localStorage.getItem("theme") as Theme;
+    return (storedTheme === "dark" || storedTheme === "light") ? storedTheme : "light";
+  });
 
   useEffect(() => {
     const root = document.documentElement;
 
     if (theme === "dark") {
-      root.classList.add("dark"); root.setAttribute("data-theme", "dark");
+      root.classList.add("dark"); 
+      root.setAttribute("data-theme", "dark");
     } else {
-      root.classList.remove("dark"); root.setAttribute("data-theme", "light");
+      root.classList.remove("dark"); 
+      root.setAttribute("data-theme", "light");
     }
+    
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {
