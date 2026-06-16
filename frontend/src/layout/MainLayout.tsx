@@ -214,7 +214,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
               onClick={handleLogout}
               className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-red-500 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
             >
-              <span>🚪</span>
               Logout
             </button>
           </div>
