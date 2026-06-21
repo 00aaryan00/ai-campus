@@ -5,7 +5,7 @@ import DayStatusCard from "../components/DayStatusCard";
 import AIInsights from "../components/AIInsights";
 import Notifications from "../components/Notifications";
 import ProgressCard from "../components/ProgressCard";
-import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
+import { TrendingUp, Users, BookOpen, Clock, FileText, CheckCircle, XCircle, Settings } from "lucide-react";
 import { leaveApi, dashboardApi, eventApi, facultyLeaveApi, type LeaveItem, type EventItem, type FacultyLeaveItem } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { Calendar, Trash2 } from "lucide-react";
@@ -217,9 +217,10 @@ export default function PrincipalDashboard() {
         {tenantSlug ? (
           <Link
             to={`/t/${tenantSlug}/admin/onboarding`}
-            className="mt-3 inline-block rounded-xl bg-cyan-50 dark:bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-700 dark:text-cyan-400 transition hover:bg-cyan-100 dark:hover:bg-cyan-500/20"
+            className="mt-4 inline-flex w-fit items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-blue-500/40 dark:bg-blue-500 dark:hover:bg-blue-400"
           >
-            Open Tenant Onboarding
+            <Settings size={18} />
+            Institution Setup
           </Link>
         ) : null}
       </div>
