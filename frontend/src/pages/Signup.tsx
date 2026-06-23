@@ -271,8 +271,16 @@ export default function Signup() {
                 <h2 className="text-2xl font-bold">Request submitted</h2>
                 <p className="text-slate-300 mt-1">{successMessage}</p>
                 {devPassword ? (
-                  <div className="mt-4 rounded-xl border border-amber-300/40 bg-amber-500/10 p-4 text-sm text-amber-100">
-                    Dev password: <span className="font-bold">{devPassword}</span>
+                  <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-bold uppercase tracking-wider text-amber-400">
+                        🔐 Auto-Generated
+                      </span>
+                      <span className="font-medium text-amber-200">Please save this for your login from next time </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      Password: <span className="rounded bg-black/40 px-3 py-1.5 text-lg font-mono font-bold tracking-wider text-white shadow-inner">{devPassword}</span>
+                    </div>
                   </div>
                 ) : null}
                 <div className="mt-6">
