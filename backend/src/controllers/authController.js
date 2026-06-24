@@ -342,10 +342,56 @@ const updateSemester = async (req, res, next) => {
   }
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    if (!req.tenant?._id) {
+      return res.status(400).json({ success: false, message: "Tenant context is required" });
+    }
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const user = await User.findOne({
+      email: normalizeEmail(email),
+      institutionId: req.tenant._id,
+    });
+
+    if (!user || user.status === "disabled") {
+      return res.status(404).json({ success: false, message: "Account not found or disabled." });
+    }
+
+    const generatedPassword = generateProvisionedPassword();
+
+    user.password = generatedPassword;
+    await user.save();
+
+    await sendProvisionedPassword({
+      tenantSlug: req.tenant.slug,
+      institutionName: req.tenant.name,
+      email,
+      name: user.name,
+      role: user.role,
+      password: generatedPassword,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "A new password has been generated.",
+      devGeneratedPassword: generatedPassword,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   signupRequest,
   loginUser,
   getCurrentUser,
   updateSemester,
+  forgotPassword,
 };

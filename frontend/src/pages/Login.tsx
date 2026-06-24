@@ -34,6 +34,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<"login" | "forgot">("login");
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const init = async () => {
@@ -68,6 +71,22 @@ export default function Login() {
       navigate(`/t/${tenantSlug}/${route}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tenantSlug || !email) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await authApi.forgotPassword(tenantSlug, { email });
+      setSuccessMessage(response.message);
+      setGeneratedPassword(response.devGeneratedPassword || null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reset failed");
     } finally {
       setLoading(false);
     }
@@ -117,59 +136,116 @@ export default function Login() {
           </aside>
 
           <main className="p-8 md:p-10">
-            <h2 className="text-2xl font-bold">Welcome back</h2>
-            <p className="text-slate-300 mt-1">Enter your email and password to continue.</p>
+            {mode === "login" ? (
+              <>
+                <h2 className="text-2xl font-bold">Welcome back</h2>
+                <p className="text-slate-300 mt-1">Enter your email and password to continue.</p>
 
-            <form onSubmit={handleLogin} className="mt-8 space-y-4">
-              <div>
-                <label className="text-sm text-slate-300">
-                  {tenant.authMode === "roster_based"
-                    ? "Institute-registered email"
-                    : "Institution domain email"}
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-slate-300">Password</label>
-                <div className="relative mt-1">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 pr-11 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
-                  />
+                <form onSubmit={handleLogin} className="mt-8 space-y-4">
+                  <div>
+                    <label className="text-sm text-slate-300">
+                      {tenant.authMode === "roster_based"
+                        ? "Institute-registered email"
+                        : "Institution domain email"}
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm text-slate-300">Password</label>
+                      <button type="button" onClick={() => { setMode("forgot"); setError(""); setSuccessMessage(""); setGeneratedPassword(null); }} className="text-xs text-gold-400 hover:text-gold-300 transition">Forgot password?</button>
+                    </div>
+                    <div className="relative mt-1">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 pr-11 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  {error ? <p className="text-sm text-rose-300">{error}</p> : null}
                   <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 hover:from-gold-600 hover:to-gold-700 shadow-lg shadow-gold-500/25 transition disabled:opacity-60"
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {loading ? "Signing in..." : "Sign in"}
+                  </button>
+                </form>
+
+                <p className="mt-6 text-sm text-slate-300">
+                  New here?{" "}
+                  <Link to={`/t/${tenantSlug}/signup`} className="text-gold-400 font-semibold hover:text-gold-300 transition">
+                    Request account access
+                  </Link>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold">Reset Password</h2>
+                <p className="text-slate-300 mt-1">Enter your email to generate a new password.</p>
+
+                {generatedPassword ? (
+                  <div className="mt-6 flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-bold uppercase tracking-wider text-amber-400">
+                        🔐 Auto-Generated
+                      </span>
+                      <span className="font-medium text-amber-200">Please save this for your login from next time</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      Password: <span className="rounded bg-black/40 px-3 py-1.5 text-lg font-mono font-bold tracking-wider text-white shadow-inner">{generatedPassword}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="mt-8 space-y-4">
+                    <div>
+                      <label className="text-sm text-slate-300">
+                        {tenant.authMode === "roster_based"
+                          ? "Institute-registered email"
+                          : "Institution domain email"}
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500/50 transition-all"
+                      />
+                    </div>
+                    {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 hover:from-gold-600 hover:to-gold-700 shadow-lg shadow-gold-500/25 transition disabled:opacity-60"
+                    >
+                      {loading ? "Generating..." : "Generate New Password"}
+                    </button>
+                  </form>
+                )}
+
+                <div className="mt-6 text-center">
+                  <button onClick={() => { setMode("login"); setError(""); setGeneratedPassword(null); }} className="text-sm text-gold-400 font-semibold hover:text-gold-300 transition">
+                    Back to login
                   </button>
                 </div>
-              </div>
-              {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold py-3 hover:from-gold-600 hover:to-gold-700 shadow-lg shadow-gold-500/25 transition disabled:opacity-60"
-              >
-                {loading ? "Signing in..." : "Sign in"}
-              </button>
-            </form>
-
-            <p className="mt-6 text-sm text-slate-300">
-              New here?{" "}
-              <Link to={`/t/${tenantSlug}/signup`} className="text-gold-400 font-semibold hover:text-gold-300 transition">
-                Request account access
-              </Link>
-            </p>
+              </>
+            )}
           </main>
         </div>
       </div>

@@ -6,6 +6,7 @@ const {
   loginUser,
   getCurrentUser,
   updateSemester,
+  forgotPassword,
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/signup-request", authLimiter, signupRequest);
 router.post("/login", authLimiter, loginUser);
+router.post("/forgot-password", authLimiter, forgotPassword);
 router.get("/me", protect, getCurrentUser);
 router.put("/semester", protect, updateSemester);
 

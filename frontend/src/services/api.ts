@@ -107,6 +107,9 @@ export const authApi = {
   login: (tenantSlug: string, payload: { email: string; password: string }) =>
     request<AuthResponse>(tenantPath(tenantSlug, "/auth/login"), { method: "POST", body: payload }),
 
+  forgotPassword: (tenantSlug: string, payload: { email: string }) =>
+    request<{ success: boolean; message: string; devGeneratedPassword?: string }>(tenantPath(tenantSlug, "/auth/forgot-password"), { method: "POST", body: payload }),
+
   me: (token: string, tenantSlug?: string) =>
     request<{ success: boolean; user: AuthUser }>(tenantPath(tenantSlug || null, "/auth/me"), {
       method: "GET",
