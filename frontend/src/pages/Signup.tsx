@@ -273,9 +273,6 @@ export default function Signup() {
                 {devPassword ? (
                   <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-bold uppercase tracking-wider text-amber-400">
-                        🔐 Auto-Generated
-                      </span>
                       <span className="font-medium text-amber-200">Please save this for your login from next time </span>
                     </div>
                     <div className="flex items-center gap-2">
