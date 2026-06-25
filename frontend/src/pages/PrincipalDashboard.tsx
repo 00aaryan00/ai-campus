@@ -220,7 +220,7 @@ export default function PrincipalDashboard() {
             className="mt-4 inline-flex w-fit items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-blue-500/40 dark:bg-blue-500 dark:hover:bg-blue-400"
           >
             <Settings size={18} />
-            Institution Setup
+            Institution board
           </Link>
         ) : null}
       </div>
